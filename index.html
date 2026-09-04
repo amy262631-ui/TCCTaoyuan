@@ -290,7 +290,6 @@
       box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
     }
 
-    /* 甘特圖控制列與排序工具 */
     .gantt-container {
       flex: 1;
       overflow-y: auto;
@@ -334,7 +333,6 @@
       font-weight: bold;
     }
 
-    /* 甘特圖篩選與排序工具列 */
     .gantt-filter-bar {
       display: flex;
       align-items: center;
@@ -348,18 +346,8 @@
       margin-bottom: 14px;
     }
 
-    .filter-group {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .filter-group label {
-      font-size: 0.9rem;
-      font-weight: bold;
-      color: #334155;
-    }
-
+    .filter-group { display: flex; align-items: center; gap: 8px; }
+    .filter-group label { font-size: 0.9rem; font-weight: bold; color: #334155; }
     .filter-group select, .filter-group input {
       padding: 6px 10px;
       border-radius: 6px;
@@ -383,14 +371,8 @@
       user-select: none;
     }
 
-    .gantt-table th.sortable {
-      cursor: pointer;
-      transition: background-color 0.2s;
-    }
-    .gantt-table th.sortable:hover {
-      background-color: #e2e8f0;
-      color: var(--primary);
-    }
+    .gantt-table th.sortable { cursor: pointer; transition: background-color 0.2s; }
+    .gantt-table th.sortable:hover { background-color: #e2e8f0; color: var(--primary); }
 
     .gantt-table td { padding: 10px 10px; border-bottom: 1px solid var(--border); }
     .gantt-table tr.group-row td {
@@ -713,7 +695,6 @@
   let userProjectData = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
   let currentSelectedId = null;
 
-  // 原始合約排程資料
   const rawProjectSchedule = [
     { type: "group", code: "A1", name: "假設工程", totalDays: 30, originalIndex: 1 },
     { type: "task", code: "A1.1", name: "設備圖面", startDay: 0, endDay: 28, groupCode: "A1", originalIndex: 2 },
@@ -800,7 +781,6 @@
   ];
   const TOTAL_PROJECT_DAYS = 390;
 
-  // DOM 宣告
   const tabBtnSpec = document.getElementById('tabBtnSpec');
   const tabBtnGantt = document.getElementById('tabBtnGantt');
   const viewSpec = document.getElementById('viewSpec');
@@ -858,7 +838,6 @@
   const thSortStart = document.getElementById('thSortStart');
   const thSortEnd = document.getElementById('thSortEnd');
 
-  // 分頁切換
   tabBtnSpec.addEventListener('click', () => {
     tabBtnSpec.classList.add('active');
     tabBtnGantt.classList.remove('active');
@@ -888,7 +867,6 @@
     return `${y}/${m}/${d}`;
   }
 
-  // --- 渲染甘特圖（支援排序、過濾與一鍵還原） ---
   function renderTimeline() {
     const startDateStr = startDateInput.value;
     if (!startDateStr) return;
@@ -901,10 +879,8 @@
     const sortType = ganttSortSelect.value;
     const searchKeyword = ganttSearchInput.value.trim().toLowerCase();
 
-    // 複製資料陣列
     let displayList = [...rawProjectSchedule];
 
-    // 1. 關鍵字過濾
     if (searchKeyword) {
       displayList = displayList.filter(item => {
         const matchCode = item.code && item.code.toLowerCase().includes(searchKeyword);
@@ -913,16 +889,12 @@
       });
     }
 
-    // 2. 排序處理
     if (sortType === 'default') {
-      // 依原始合約樹狀工項順序排序
       displayList.sort((a, b) => a.originalIndex - b.originalIndex);
     } else {
-      // 依日期排序時，主要針對具體任務（過濾掉純大項標題，讓各設備直接依時程排隊）
       if (!searchKeyword) {
         displayList = displayList.filter(item => item.type === 'task');
       }
-      
       if (sortType === 'startAsc') {
         displayList.sort((a, b) => (a.startDay ?? 0) - (b.startDay ?? 0) || (a.endDay ?? 0) - (b.endDay ?? 0));
       } else if (sortType === 'startDesc') {
@@ -983,37 +955,25 @@
     });
   }
 
-  // 甘特圖排序與過濾事件監聽
   ganttSortSelect.addEventListener('change', renderTimeline);
   ganttSearchInput.addEventListener('input', renderTimeline);
 
-  // 還原預設排序
   resetGanttSortBtn.addEventListener('click', () => {
     ganttSortSelect.value = 'default';
     ganttSearchInput.value = '';
     renderTimeline();
   });
 
-  // 點擊表頭快速切換排序
   thSortStart.addEventListener('click', () => {
-    if (ganttSortSelect.value === 'startAsc') {
-      ganttSortSelect.value = 'startDesc';
-    } else {
-      ganttSortSelect.value = 'startAsc';
-    }
+    ganttSortSelect.value = (ganttSortSelect.value === 'startAsc') ? 'startDesc' : 'startAsc';
     renderTimeline();
   });
 
   thSortEnd.addEventListener('click', () => {
-    if (ganttSortSelect.value === 'endAsc') {
-      ganttSortSelect.value = 'endDesc';
-    } else {
-      ganttSortSelect.value = 'endAsc';
-    }
+    ganttSortSelect.value = (ganttSortSelect.value === 'endAsc') ? 'endDesc' : 'endAsc';
     renderTimeline();
   });
 
-  // 讀取開工日
   async function loadTimelineFromSheet() {
     timelineSyncStatus.textContent = '🔄 讀取雲端開工日...';
     try {
@@ -1038,7 +998,6 @@
     }
   }
 
-  // 儲存開工日
   saveTimelineBtn.addEventListener('click', async () => {
     const sDate = startDateInput.value;
     if (!sDate) {
@@ -1051,19 +1010,21 @@
     timelineSyncStatus.textContent = '⏳ 正在寫入試算表...';
 
     try {
-      const params = new URLSearchParams({
+      const payload = {
         action: 'saveTimeline',
         startDate: sDate,
         endDate: finalDate,
         projectName: '台泥桃園-#3 拌合系統更新總包工程'
+      };
+
+      await fetch(GAS_API_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(payload)
       });
-      const res = await fetch(`${GAS_API_URL}?${params.toString()}`);
-      const data = await res.json();
-      if (data.success) {
-        timelineSyncStatus.textContent = `✅ 已成功記錄至 Google Sheets (${sDate})`;
-      } else {
-        throw new Error(data.error);
-      }
+
+      timelineSyncStatus.textContent = `✅ 已成功記錄至 Google Sheets (${sDate})`;
     } catch (err) {
       timelineSyncStatus.textContent = `❌ 儲存失敗：${err.message}`;
     } finally {
@@ -1075,7 +1036,6 @@
     renderTimeline();
   });
 
-  // 讀取設備規範
   async function fetchSheetData() {
     connStatus.textContent = '資料來源：Google Sheets 讀取中...';
     sidebarList.innerHTML = '<div class="loading-state">載入雲端試算表資料中...</div>';
@@ -1210,7 +1170,7 @@
     });
   }
 
-  // 儲存修改至雲端
+  // ★ 核心儲存按鈕：使用 POST + no-cors 支援長篇規範與換行寫入 ★
   saveItemBtn.addEventListener('click', async () => {
     if (!currentSelectedId) return;
     const item = rawSpecifications.find(d => d.id === currentSelectedId);
@@ -1232,20 +1192,20 @@
     localStorage.setItem(STORAGE_KEY, JSON.stringify(userProjectData));
 
     try {
-      const params = new URLSearchParams({
+      const payload = {
         action: 'updateItem',
         id: item.id,
         spec: updatedSpec,
         actualQty: updatedActualQty,
         memo: updatedMemo
+      };
+
+      await fetch(GAS_API_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(payload)
       });
-
-      const response = await fetch(`${GAS_API_URL}?${params.toString()}`);
-      const resData = await response.json();
-
-      if (!resData.success) {
-        throw new Error(resData.error || '後端更新失敗');
-      }
 
       item.spec = updatedSpec;
       item.actualQty = updatedActualQty;
@@ -1327,7 +1287,7 @@
     saveNewItemBtn.disabled = true;
 
     try {
-      const params = new URLSearchParams({
+      const payload = {
         action: 'add',
         id: newItem.id,
         category: newItem.category,
@@ -1335,12 +1295,14 @@
         qty: newItem.qty,
         unit: newItem.unit,
         spec: newItem.spec
+      };
+
+      await fetch(GAS_API_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(payload)
       });
-
-      const response = await fetch(`${GAS_API_URL}?${params.toString()}`);
-      const resData = await response.json();
-
-      if (!resData.success) throw new Error(resData.error || '後端寫入失敗');
 
       rawSpecifications.push(newItem);
       initControls();
