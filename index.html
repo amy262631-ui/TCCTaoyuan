@@ -290,6 +290,7 @@
       box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
     }
 
+    /* 甘特圖控制列與排序工具 */
     .gantt-container {
       flex: 1;
       overflow-y: auto;
@@ -309,7 +310,7 @@
       padding: 14px 22px;
       border-radius: 10px;
       border: 1px solid #c8e1fb;
-      margin-bottom: 18px;
+      margin-bottom: 12px;
     }
 
     .timeline-control-left { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
@@ -333,6 +334,41 @@
       font-weight: bold;
     }
 
+    /* 甘特圖篩選與排序工具列 */
+    .gantt-filter-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      background: #f8fafc;
+      padding: 10px 16px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      margin-bottom: 14px;
+    }
+
+    .filter-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .filter-group label {
+      font-size: 0.9rem;
+      font-weight: bold;
+      color: #334155;
+    }
+
+    .filter-group select, .filter-group input {
+      padding: 6px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      font-size: 0.9rem;
+      outline: none;
+      background: #fff;
+    }
+
     .gantt-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 0.96rem; }
     .gantt-table th {
       background-color: #f1f5f9;
@@ -344,6 +380,16 @@
       position: sticky;
       top: 0;
       z-index: 10;
+      user-select: none;
+    }
+
+    .gantt-table th.sortable {
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    .gantt-table th.sortable:hover {
+      background-color: #e2e8f0;
+      color: var(--primary);
     }
 
     .gantt-table td { padding: 10px 10px; border-bottom: 1px solid var(--border); }
@@ -568,6 +614,29 @@
       <div class="summary-badge" id="projectEndBadge">全案最晚完工日：計算中...</div>
     </div>
 
+    <!-- 甘特圖篩選與排序控制列 -->
+    <div class="gantt-filter-bar">
+      <div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
+        <div class="filter-group">
+          <label for="ganttSortSelect">🔀 排序依據：</label>
+          <select id="ganttSortSelect">
+            <option value="default">📋 預設合約工項順序 (A1~A10)</option>
+            <option value="startAsc">🟢 最晚開始日 (由早到晚 ↑)</option>
+            <option value="startDesc">🟢 最晚開始日 (由晚到早 ↓)</option>
+            <option value="endAsc">🔴 最晚完工日 (由早到晚 ↑)</option>
+            <option value="endDesc">🔴 最晚完工日 (由晚到早 ↓)</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label for="ganttSearchInput">🔍 關鍵字過濾：</label>
+          <input type="text" id="ganttSearchInput" placeholder="過濾工項名稱或編號...">
+        </div>
+      </div>
+
+      <button class="btn btn-secondary" id="resetGanttSortBtn" style="padding: 5px 12px; font-size: 0.85rem;">🔄 還原預設排序</button>
+    </div>
+
     <div style="overflow-x: auto; flex: 1;">
       <table class="gantt-table">
         <thead>
@@ -577,8 +646,12 @@
             <th style="width: 75px; text-align: center; white-space: nowrap;">第幾天起</th>
             <th style="width: 75px; text-align: center; white-space: nowrap;">最晚截止</th>
             <th style="width: 65px; text-align: center; white-space: nowrap;">工期(天)</th>
-            <th style="width: 125px; text-align: center;">最晚進場/開始</th>
-            <th style="width: 125px; text-align: center;">最晚必須完工</th>
+            <th class="sortable" id="thSortStart" style="width: 130px; text-align: center;" title="點擊切換開始日排序">
+              最晚進場/開始 ⬍
+            </th>
+            <th class="sortable" id="thSortEnd" style="width: 130px; text-align: center;" title="點擊切換完工日排序">
+              最晚必須完工 ⬍
+            </th>
             <th style="width: 260px; text-align: center;">時程甘特進度 (總期 390 天)</th>
           </tr>
         </thead>
@@ -640,82 +713,94 @@
   let userProjectData = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
   let currentSelectedId = null;
 
-  const projectSchedule = [
-    { type: "group", code: "A1", name: "假設工程", totalDays: 30 },
-    { type: "task", code: "A1.1", name: "設備圖面", startDay: 0, endDay: 28 },
-    { type: "task", code: "A1.2", name: "假設工程", startDay: 0, endDay: 28 },
-    { type: "task", code: "A1.3", name: "#4拌合機系統水路遷移製作安裝", startDay: 0, endDay: 28 },
-    { type: "group", code: "A2", name: "舊設備拆除及清運工程", totalDays: 210 },
-    { type: "task", code: "A2.1", name: "既有設備拆除(舊RC基礎打除及復原)", startDay: 14, endDay: 56 },
-    { type: "task", code: "A2.2", name: "事業廢棄物清運處理", startDay: 63, endDay: 98 },
-    { type: "task", code: "—", name: "土木工程-卸料坑", startDay: 105, endDay: 182 },
-    { type: "task", code: "—", name: "土木工程-骨材庫", startDay: 140, endDay: 168 },
-    { type: "task", code: "—", name: "土木工程-拌合塔", startDay: 147, endDay: 210 },
-    { type: "group", code: "A3", name: "砂石收料設備", totalDays: 280 },
-    { type: "task", code: "A3.1", name: "收料室製作安裝", startDay: 266, endDay: 280 },
-    { type: "task", code: "A3.2", name: "砂石收料防塵屋製作安裝", startDay: 266, endDay: 280 },
-    { type: "task", code: "A3.3", name: "砂石卸料槽製作安裝", startDay: 259, endDay: 273 },
-    { type: "group", code: "A4", name: "66M入料帶運機", totalDays: 280 },
-    { type: "task", code: "A4.1", name: "入料帶運機製作安裝", startDay: 259, endDay: 280 },
-    { type: "group", code: "A5", name: "骨材庫設備", totalDays: 357 },
-    { type: "task", code: "A5.1", name: "骨材庫轉料斗製作安裝", startDay: 217, endDay: 224 },
-    { type: "task", code: "A5.2", name: "4M分料帶運機製作安裝", startDay: 217, endDay: 224 },
-    { type: "task", code: "A5.3", name: "800M3骨材庫製作安裝", startDay: 175, endDay: 217 },
-    { type: "task", code: "A5.4", name: "骨材庫之字梯製作安裝", startDay: 231, endDay: 238 },
-    { type: "task", code: "A5.5", name: "骨材限制門製作安裝", startDay: 224, endDay: 231 },
-    { type: "task", code: "A5.6", name: "砂石閘門製作安裝", startDay: 224, endDay: 231 },
-    { type: "task", code: "A5.7", name: "2m3骨材計量桶製作安裝", startDay: 175, endDay: 189 },
-    { type: "task", code: "A5.8", name: "骨材庫避雷針製作安裝", startDay: 329, endDay: 357 },
-    { type: "group", code: "A6", name: "46M出料帶運機", totalDays: 273 },
-    { type: "task", code: "A6.1", name: "出料帶運機製作安裝", startDay: 245, endDay: 273 },
-    { type: "group", code: "A7", name: "拌合塔結構補強及設備", totalDays: 280 },
-    { type: "task", code: "A7.4", name: "4m3骨材待拌槽製作安裝", startDay: 245, endDay: 259 },
-    { type: "task", code: "A7.5", name: "骨材滑槽製作安裝", startDay: 245, endDay: 259 },
-    { type: "task", code: "A7.6", name: "2m3膠結材計量桶製作安裝", startDay: 245, endDay: 259 },
-    { type: "task", code: "A7.7", name: "膠結材滑槽製作安裝", startDay: 238, endDay: 252 },
-    { type: "task", code: "A7.8", name: "0.5m3藥劑暫存槽製作安裝", startDay: 259, endDay: 273 },
-    { type: "task", code: "A7.9", name: "0.03m3藥劑計量設備製作安裝", startDay: 259, endDay: 273 },
-    { type: "task", code: "A7.10", name: "8m3拌合水暫存槽製作安裝", startDay: 259, endDay: 273 },
-    { type: "task", code: "A7.11", name: "1m3拌合水計量桶製作安裝", startDay: 252, endDay: 266 },
-    { type: "task", code: "A7.12", name: "1m3汙水暫存槽製作安裝", startDay: 259, endDay: 273 },
-    { type: "task", code: "A7.13", name: "1m3汙水計量桶製作安裝", startDay: 259, endDay: 273 },
-    { type: "task", code: "A7.14", name: "5m3自來水暫存槽製作安裝", startDay: 259, endDay: 273 },
-    { type: "task", code: "A7.15", name: "39m3拌合機集塵機製作安裝", startDay: 266, endDay: 280 },
-    { type: "task", code: "A7.16", name: "雙馬達拌合機", startDay: 224, endDay: 245 },
-    { type: "task", code: "A7.17", name: "混凝土儲槽製作安裝", startDay: 224, endDay: 238 },
-    { type: "task", code: "A7.18", name: "夾具製作安裝", startDay: 224, endDay: 238 },
-    { type: "task", code: "A7.19", name: "混凝土儲槽電鍍維修平台製作安裝", startDay: 224, endDay: 238 },
-    { type: "task", code: "A7.20", name: "拌合塔製作安裝", startDay: 224, endDay: 280 },
-    { type: "group", code: "A8", name: "膠結材儲桶", totalDays: 360 },
-    { type: "task", code: "A8.1", name: "120頓膠結材貯桶製作安裝", startDay: 238, endDay: 287 },
-    { type: "task", code: "A8.2", name: "250頓膠結材貯桶250T製作安裝", startDay: 238, endDay: 287 },
-    { type: "task", code: "A8.3", name: "500頓膠結材貯桶500T製作安裝", startDay: 238, endDay: 287 },
-    { type: "task", code: "A8.4", name: "儲桶之字樓梯製作安裝", startDay: 252, endDay: 273 },
-    { type: "task", code: "A8.5", name: "膠結材限制門製作安裝", startDay: 273, endDay: 287 },
-    { type: "task", code: "A8.6", name: "膠結材蝶閥製作安裝", startDay: 273, endDay: 287 },
-    { type: "task", code: "A8.7", name: "28M3貯桶負壓式集塵機製作安裝", startDay: 273, endDay: 280 },
-    { type: "task", code: "A8.8", name: "子母型螺運機計量設備製作安裝", startDay: 266, endDay: 280 },
-    { type: "task", code: "A8.9", name: "50HP膠結材輸送空壓機備安裝", startDay: 245, endDay: 259 },
-    { type: "task", code: "A8.10", name: "貯桶料位警示與集塵操作設備製作安裝", startDay: 273, endDay: 357 },
-    { type: "task", code: "A8.11", name: "水泥庫避雷針製作安裝", startDay: 329, endDay: 357 },
-    { type: "group", code: "A9", name: "壓縮空氣系統", totalDays: 360 },
-    { type: "task", code: "A9.1", name: "空壓系統安裝", startDay: 273, endDay: 357 },
-    { type: "group", code: "A10", name: "儀控及電力配線工程", totalDays: 360 },
-    { type: "task", code: "A10.1", name: "600V XLPE 250mm2*1C 動力電纜配線工程", startDay: 273, endDay: 357 },
-    { type: "task", code: "A10.2", name: "600V PVC 38mm2*1C 接地線配線工程", startDay: 273, endDay: 357 },
-    { type: "task", code: "A10.3", name: "儀控操作室", startDay: 273, endDay: 357 },
-    { type: "task", code: "A10.4", name: "骨材入庫動力盤", startDay: 273, endDay: 357 },
-    { type: "task", code: "A10.5", name: "拌合系統動力盤", startDay: 273, endDay: 357 },
-    { type: "task", code: "A10.6", name: "製程電腦操作盤", startDay: 273, endDay: 357 },
-    { type: "task", code: "A10.7", name: "辦公室遠端配比讀寫／備援電腦", startDay: 273, endDay: 357 },
-    { type: "task", code: "A10.8", name: "電子式磅", startDay: 273, endDay: 357 },
-    { type: "task", code: "A10.9", name: "CCTV 影像監視設備", startDay: 273, endDay: 357 },
-    { type: "task", code: "A10.10", name: "安全防護設備", startDay: 273, endDay: 357 },
-    { type: "task", code: "A10.11", name: "浪板覆蓋", startDay: 329, endDay: 357 },
-    { type: "task", code: "完工", name: "項目正式運轉", startDay: 364, endDay: 390 }
+  // 原始合約排程資料
+  const rawProjectSchedule = [
+    { type: "group", code: "A1", name: "假設工程", totalDays: 30, originalIndex: 1 },
+    { type: "task", code: "A1.1", name: "設備圖面", startDay: 0, endDay: 28, groupCode: "A1", originalIndex: 2 },
+    { type: "task", code: "A1.2", name: "假設工程", startDay: 0, endDay: 28, groupCode: "A1", originalIndex: 3 },
+    { type: "task", code: "A1.3", name: "#4拌合機系統水路遷移製作安裝", startDay: 0, endDay: 28, groupCode: "A1", originalIndex: 4 },
+
+    { type: "group", code: "A2", name: "舊設備拆除及清運工程", totalDays: 210, originalIndex: 5 },
+    { type: "task", code: "A2.1", name: "既有設備拆除(舊RC基礎打除及復原)", startDay: 14, endDay: 56, groupCode: "A2", originalIndex: 6 },
+    { type: "task", code: "A2.2", name: "事業廢棄物清運處理", startDay: 63, endDay: 98, groupCode: "A2", originalIndex: 7 },
+    { type: "task", code: "—", name: "土木工程-卸料坑", startDay: 105, endDay: 182, groupCode: "A2", originalIndex: 8 },
+    { type: "task", code: "—", name: "土木工程-骨材庫", startDay: 140, endDay: 168, groupCode: "A2", originalIndex: 9 },
+    { type: "task", code: "—", name: "土木工程-拌合塔", startDay: 147, endDay: 210, groupCode: "A2", originalIndex: 10 },
+
+    { type: "group", code: "A3", name: "砂石收料設備", totalDays: 280, originalIndex: 11 },
+    { type: "task", code: "A3.1", name: "收料室製作安裝", startDay: 266, endDay: 280, groupCode: "A3", originalIndex: 12 },
+    { type: "task", code: "A3.2", name: "砂石收料防塵屋製作安裝", startDay: 266, endDay: 280, groupCode: "A3", originalIndex: 13 },
+    { type: "task", code: "A3.3", name: "砂石卸料槽製作安裝", startDay: 259, endDay: 273, groupCode: "A3", originalIndex: 14 },
+
+    { type: "group", code: "A4", name: "66M入料帶運機", totalDays: 280, originalIndex: 15 },
+    { type: "task", code: "A4.1", name: "入料帶運機製作安裝", startDay: 259, endDay: 280, groupCode: "A4", originalIndex: 16 },
+
+    { type: "group", code: "A5", name: "骨材庫設備", totalDays: 357, originalIndex: 17 },
+    { type: "task", code: "A5.1", name: "骨材庫轉料斗製作安裝", startDay: 217, endDay: 224, groupCode: "A5", originalIndex: 18 },
+    { type: "task", code: "A5.2", name: "4M分料帶運機製作安裝", startDay: 217, endDay: 224, groupCode: "A5", originalIndex: 19 },
+    { type: "task", code: "A5.3", name: "800M3骨材庫製作安裝", startDay: 175, endDay: 217, groupCode: "A5", originalIndex: 20 },
+    { type: "task", code: "A5.4", name: "骨材庫之字梯製作安裝", startDay: 231, endDay: 238, groupCode: "A5", originalIndex: 21 },
+    { type: "task", code: "A5.5", name: "骨材限制門製作安裝", startDay: 224, endDay: 231, groupCode: "A5", originalIndex: 22 },
+    { type: "task", code: "A5.6", name: "砂石閘門製作安裝", startDay: 224, endDay: 231, groupCode: "A5", originalIndex: 23 },
+    { type: "task", code: "A5.7", name: "2m3骨材計量桶製作安裝", startDay: 175, endDay: 189, groupCode: "A5", originalIndex: 24 },
+    { type: "task", code: "A5.8", name: "骨材庫避雷針製作安裝", startDay: 329, endDay: 357, groupCode: "A5", originalIndex: 25 },
+
+    { type: "group", code: "A6", name: "46M出料帶運機", totalDays: 273, originalIndex: 26 },
+    { type: "task", code: "A6.1", name: "出料帶運機製作安裝", startDay: 245, endDay: 273, groupCode: "A6", originalIndex: 27 },
+
+    { type: "group", code: "A7", name: "拌合塔結構補強及設備", totalDays: 280, originalIndex: 28 },
+    { type: "task", code: "A7.4", name: "4m3骨材待拌槽製作安裝", startDay: 245, endDay: 259, groupCode: "A7", originalIndex: 29 },
+    { type: "task", code: "A7.5", name: "骨材滑槽製作安裝", startDay: 245, endDay: 259, groupCode: "A7", originalIndex: 30 },
+    { type: "task", code: "A7.6", name: "2m3膠結材計量桶製作安裝", startDay: 245, endDay: 259, groupCode: "A7", originalIndex: 31 },
+    { type: "task", code: "A7.7", name: "膠結材滑槽製作安裝", startDay: 238, endDay: 252, groupCode: "A7", originalIndex: 32 },
+    { type: "task", code: "A7.8", name: "0.5m3藥劑暫存槽製作安裝", startDay: 259, endDay: 273, groupCode: "A7", originalIndex: 33 },
+    { type: "task", code: "A7.9", name: "0.03m3藥劑計量設備製作安裝", startDay: 259, endDay: 273, groupCode: "A7", originalIndex: 34 },
+    { type: "task", code: "A7.10", name: "8m3拌合水暫存槽製作安裝", startDay: 259, endDay: 273, groupCode: "A7", originalIndex: 35 },
+    { type: "task", code: "A7.11", name: "1m3拌合水計量桶製作安裝", startDay: 252, endDay: 266, groupCode: "A7", originalIndex: 36 },
+    { type: "task", code: "A7.12", name: "1m3汙水暫存槽製作安裝", startDay: 259, endDay: 273, groupCode: "A7", originalIndex: 37 },
+    { type: "task", code: "A7.13", name: "1m3汙水計量桶製作安裝", startDay: 259, endDay: 273, groupCode: "A7", originalIndex: 38 },
+    { type: "task", code: "A7.14", name: "5m3自來水暫存槽製作安裝", startDay: 259, endDay: 273, groupCode: "A7", originalIndex: 39 },
+    { type: "task", code: "A7.15", name: "39m3拌合機集塵機製作安裝", startDay: 266, endDay: 280, groupCode: "A7", originalIndex: 40 },
+    { type: "task", code: "A7.16", name: "雙馬達拌合機", startDay: 224, endDay: 245, groupCode: "A7", originalIndex: 41 },
+    { type: "task", code: "A7.17", name: "混凝土儲槽製作安裝", startDay: 224, endDay: 238, groupCode: "A7", originalIndex: 42 },
+    { type: "task", code: "A7.18", name: "夾具製作安裝", startDay: 224, endDay: 238, groupCode: "A7", originalIndex: 43 },
+    { type: "task", code: "A7.19", name: "混凝土儲槽電鍍維修平台製作安裝", startDay: 224, endDay: 238, groupCode: "A7", originalIndex: 44 },
+    { type: "task", code: "A7.20", name: "拌合塔製作安裝", startDay: 224, endDay: 280, groupCode: "A7", originalIndex: 45 },
+
+    { type: "group", code: "A8", name: "膠結材儲桶", totalDays: 360, originalIndex: 46 },
+    { type: "task", code: "A8.1", name: "120頓膠結材貯桶製作安裝", startDay: 238, endDay: 287, groupCode: "A8", originalIndex: 47 },
+    { type: "task", code: "A8.2", name: "250頓膠結材貯桶250T製作安裝", startDay: 238, endDay: 287, groupCode: "A8", originalIndex: 48 },
+    { type: "task", code: "A8.3", name: "500頓膠結材貯桶500T製作安裝", startDay: 238, endDay: 287, groupCode: "A8", originalIndex: 49 },
+    { type: "task", code: "A8.4", name: "儲桶之字樓梯製作安裝", startDay: 252, endDay: 273, groupCode: "A8", originalIndex: 50 },
+    { type: "task", code: "A8.5", name: "膠結材限制門製作安裝", startDay: 273, endDay: 287, groupCode: "A8", originalIndex: 51 },
+    { type: "task", code: "A8.6", name: "膠結材蝶閥製作安裝", startDay: 273, endDay: 287, groupCode: "A8", originalIndex: 52 },
+    { type: "task", code: "A8.7", name: "28M3貯桶負壓式集塵機製作安裝", startDay: 273, endDay: 280, groupCode: "A8", originalIndex: 53 },
+    { type: "task", code: "A8.8", name: "子母型螺運機計量設備製作安裝", startDay: 266, endDay: 280, groupCode: "A8", originalIndex: 54 },
+    { type: "task", code: "A8.9", name: "50HP膠結材輸送空壓機備安裝", startDay: 245, endDay: 259, groupCode: "A8", originalIndex: 55 },
+    { type: "task", code: "A8.10", name: "貯桶料位警示與集塵操作設備製作安裝", startDay: 273, endDay: 357, groupCode: "A8", originalIndex: 56 },
+    { type: "task", code: "A8.11", name: "水泥庫避雷針製作安裝", startDay: 329, endDay: 357, groupCode: "A8", originalIndex: 57 },
+
+    { type: "group", code: "A9", name: "壓縮空氣系統", totalDays: 360, originalIndex: 58 },
+    { type: "task", code: "A9.1", name: "空壓系統安裝", startDay: 273, endDay: 357, groupCode: "A9", originalIndex: 59 },
+
+    { type: "group", code: "A10", name: "儀控及電力配線工程", totalDays: 360, originalIndex: 60 },
+    { type: "task", code: "A10.1", name: "600V XLPE 250mm2*1C 動力電纜配線工程", startDay: 273, endDay: 357, groupCode: "A10", originalIndex: 61 },
+    { type: "task", code: "A10.2", name: "600V PVC 38mm2*1C 接地線配線工程", startDay: 273, endDay: 357, groupCode: "A10", originalIndex: 62 },
+    { type: "task", code: "A10.3", name: "儀控操作室", startDay: 273, endDay: 357, groupCode: "A10", originalIndex: 63 },
+    { type: "task", code: "A10.4", name: "骨材入庫動力盤", startDay: 273, endDay: 357, groupCode: "A10", originalIndex: 64 },
+    { type: "task", code: "A10.5", name: "拌合系統動力盤", startDay: 273, endDay: 357, groupCode: "A10", originalIndex: 65 },
+    { type: "task", code: "A10.6", name: "製程電腦操作盤", startDay: 273, endDay: 357, groupCode: "A10", originalIndex: 66 },
+    { type: "task", code: "A10.7", name: "辦公室遠端配比讀寫／備援電腦", startDay: 273, endDay: 357, groupCode: "A10", originalIndex: 67 },
+    { type: "task", code: "A10.8", name: "電子式磅", startDay: 273, endDay: 357, groupCode: "A10", originalIndex: 68 },
+    { type: "task", code: "A10.9", name: "CCTV 影像監視設備", startDay: 273, endDay: 357, groupCode: "A10", originalIndex: 69 },
+    { type: "task", code: "A10.10", name: "安全防護設備", startDay: 273, endDay: 357, groupCode: "A10", originalIndex: 70 },
+    { type: "task", code: "A10.11", name: "浪板覆蓋", startDay: 329, endDay: 357, groupCode: "A10", originalIndex: 71 },
+
+    { type: "task", code: "完工", name: "項目正式運轉", startDay: 364, endDay: 390, originalIndex: 72 }
   ];
   const TOTAL_PROJECT_DAYS = 390;
 
+  // DOM 宣告
   const tabBtnSpec = document.getElementById('tabBtnSpec');
   const tabBtnGantt = document.getElementById('tabBtnGantt');
   const viewSpec = document.getElementById('viewSpec');
@@ -767,6 +852,13 @@
   const projectEndBadge = document.getElementById('projectEndBadge');
   const timelineTbody = document.getElementById('timelineTbody');
 
+  const ganttSortSelect = document.getElementById('ganttSortSelect');
+  const ganttSearchInput = document.getElementById('ganttSearchInput');
+  const resetGanttSortBtn = document.getElementById('resetGanttSortBtn');
+  const thSortStart = document.getElementById('thSortStart');
+  const thSortEnd = document.getElementById('thSortEnd');
+
+  // 分頁切換
   tabBtnSpec.addEventListener('click', () => {
     tabBtnSpec.classList.add('active');
     tabBtnGantt.classList.remove('active');
@@ -796,7 +888,9 @@
     return `${y}/${m}/${d}`;
   }
 
-  function renderTimeline(startDateStr) {
+  // --- 渲染甘特圖（支援排序、過濾與一鍵還原） ---
+  function renderTimeline() {
+    const startDateStr = startDateInput.value;
     if (!startDateStr) return;
     const startDate = new Date(startDateStr);
     timelineTbody.innerHTML = '';
@@ -804,7 +898,48 @@
     const finalDate = addDays(startDate, TOTAL_PROJECT_DAYS);
     projectEndBadge.textContent = `全案最晚完工日：${formatDate(finalDate)} (第 ${TOTAL_PROJECT_DAYS} 天)`;
 
-    projectSchedule.forEach(item => {
+    const sortType = ganttSortSelect.value;
+    const searchKeyword = ganttSearchInput.value.trim().toLowerCase();
+
+    // 複製資料陣列
+    let displayList = [...rawProjectSchedule];
+
+    // 1. 關鍵字過濾
+    if (searchKeyword) {
+      displayList = displayList.filter(item => {
+        const matchCode = item.code && item.code.toLowerCase().includes(searchKeyword);
+        const matchName = item.name && item.name.toLowerCase().includes(searchKeyword);
+        return matchCode || matchName;
+      });
+    }
+
+    // 2. 排序處理
+    if (sortType === 'default') {
+      // 依原始合約樹狀工項順序排序
+      displayList.sort((a, b) => a.originalIndex - b.originalIndex);
+    } else {
+      // 依日期排序時，主要針對具體任務（過濾掉純大項標題，讓各設備直接依時程排隊）
+      if (!searchKeyword) {
+        displayList = displayList.filter(item => item.type === 'task');
+      }
+      
+      if (sortType === 'startAsc') {
+        displayList.sort((a, b) => (a.startDay ?? 0) - (b.startDay ?? 0) || (a.endDay ?? 0) - (b.endDay ?? 0));
+      } else if (sortType === 'startDesc') {
+        displayList.sort((a, b) => (b.startDay ?? 0) - (a.startDay ?? 0) || (b.endDay ?? 0) - (a.endDay ?? 0));
+      } else if (sortType === 'endAsc') {
+        displayList.sort((a, b) => (a.endDay ?? 0) - (b.endDay ?? 0) || (a.startDay ?? 0) - (b.startDay ?? 0));
+      } else if (sortType === 'endDesc') {
+        displayList.sort((a, b) => (b.endDay ?? 0) - (a.endDay ?? 0) || (b.startDay ?? 0) - (a.startDay ?? 0));
+      }
+    }
+
+    if (displayList.length === 0) {
+      timelineTbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: #64748b; padding: 30px;">無符合條件的甘特工項</td></tr>`;
+      return;
+    }
+
+    displayList.forEach(item => {
       const tr = document.createElement('tr');
 
       if (item.type === 'group') {
@@ -848,6 +983,37 @@
     });
   }
 
+  // 甘特圖排序與過濾事件監聽
+  ganttSortSelect.addEventListener('change', renderTimeline);
+  ganttSearchInput.addEventListener('input', renderTimeline);
+
+  // 還原預設排序
+  resetGanttSortBtn.addEventListener('click', () => {
+    ganttSortSelect.value = 'default';
+    ganttSearchInput.value = '';
+    renderTimeline();
+  });
+
+  // 點擊表頭快速切換排序
+  thSortStart.addEventListener('click', () => {
+    if (ganttSortSelect.value === 'startAsc') {
+      ganttSortSelect.value = 'startDesc';
+    } else {
+      ganttSortSelect.value = 'startAsc';
+    }
+    renderTimeline();
+  });
+
+  thSortEnd.addEventListener('click', () => {
+    if (ganttSortSelect.value === 'endAsc') {
+      ganttSortSelect.value = 'endDesc';
+    } else {
+      ganttSortSelect.value = 'endAsc';
+    }
+    renderTimeline();
+  });
+
+  // 讀取開工日
   async function loadTimelineFromSheet() {
     timelineSyncStatus.textContent = '🔄 讀取雲端開工日...';
     try {
@@ -856,22 +1022,23 @@
       if (data.success && data.startDate) {
         const parsedDate = new Date(data.startDate).toISOString().split('T')[0];
         startDateInput.value = parsedDate;
-        renderTimeline(parsedDate);
+        renderTimeline();
         timelineSyncStatus.textContent = `🟢 已同步雲端紀錄 (${parsedDate})`;
       } else {
         const today = new Date().toISOString().split('T')[0];
         startDateInput.value = today;
-        renderTimeline(today);
+        renderTimeline();
         timelineSyncStatus.textContent = '⚪ 試算表尚無開工日，預設為今日';
       }
     } catch (e) {
       const today = new Date().toISOString().split('T')[0];
       startDateInput.value = today;
-      renderTimeline(today);
+      renderTimeline();
       timelineSyncStatus.textContent = '⚠️ 離線預設今日';
     }
   }
 
+  // 儲存開工日
   saveTimelineBtn.addEventListener('click', async () => {
     const sDate = startDateInput.value;
     if (!sDate) {
@@ -904,11 +1071,11 @@
     }
   });
 
-  startDateInput.addEventListener('change', (e) => {
-    if (e.target.value) renderTimeline(e.target.value);
+  startDateInput.addEventListener('change', () => {
+    renderTimeline();
   });
 
-  // 從 Google Sheets 抓取最新設備資料
+  // 讀取設備規範
   async function fetchSheetData() {
     connStatus.textContent = '資料來源：Google Sheets 讀取中...';
     sidebarList.innerHTML = '<div class="loading-state">載入雲端試算表資料中...</div>';
@@ -977,7 +1144,6 @@
       btn.className = 'list-item-btn';
       btn.setAttribute('data-id', item.id);
 
-      // 檢查本機與雲端是否有數量或備註異動
       const localData = userProjectData[item.id];
       const actQ = (localData && localData.actualQty !== undefined) ? localData.actualQty : item.actualQty;
       const mem = (localData && localData.memo !== undefined) ? localData.memo : item.memo;
@@ -1028,7 +1194,6 @@
     displayCustomBadge.style.display = item.isCustom ? 'inline-block' : 'none';
     contractQty.value = `${item.qty} ${item.unit}`;
 
-    // 優先載入本地暫存，若無則載入雲端試算表最新值
     const savedData = userProjectData[item.id] || {};
     displaySpec.value = savedData.spec !== undefined ? savedData.spec : (item.spec || '');
     actualQty.value = savedData.actualQty !== undefined ? savedData.actualQty : (item.actualQty !== undefined ? item.actualQty : item.qty);
@@ -1045,7 +1210,7 @@
     });
   }
 
-  // ★ 核心儲存按鈕：同步 實際數量 + 備註 + 規範 到 Google Sheets 與 本地記憶 ★
+  // 儲存修改至雲端
   saveItemBtn.addEventListener('click', async () => {
     if (!currentSelectedId) return;
     const item = rawSpecifications.find(d => d.id === currentSelectedId);
@@ -1059,7 +1224,6 @@
     saveStatus.textContent = '⏳ 正在寫入 Google Sheets 後端...';
     saveStatus.style.color = '#0284c7';
 
-    // 1. 同步更新本機快取
     userProjectData[currentSelectedId] = {
       actualQty: updatedActualQty,
       memo: updatedMemo,
@@ -1067,7 +1231,6 @@
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(userProjectData));
 
-    // 2. 同步寫入 Google Sheets
     try {
       const params = new URLSearchParams({
         action: 'updateItem',
@@ -1105,7 +1268,6 @@
     }
   });
 
-  // 輸入時即時更新本地記憶與差異標籤
   function autoSaveLocalMemo() {
     if (!currentSelectedId) return;
     const item = rawSpecifications.find(d => d.id === currentSelectedId);
@@ -1136,7 +1298,6 @@
     }
   }
 
-  // 新增設備
   saveNewItemBtn.addEventListener('click', async () => {
     const idVal = newId.value.trim();
     const catVal = newCategory.value.trim() || '自訂設備';
@@ -1233,7 +1394,6 @@ ${currentSpecVal}`;
     });
   });
 
-  // 匯出 / 匯入備份功能
   exportBtn.addEventListener('click', () => {
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(rawSpecifications, null, 2));
     const downloadAnchor = document.createElement('a');
@@ -1244,7 +1404,6 @@ ${currentSpecVal}`;
     downloadAnchor.remove();
   });
 
-  // 事件監聽
   actualQty.addEventListener('input', autoSaveLocalMemo);
   memoInput.addEventListener('input', autoSaveLocalMemo);
   displaySpec.addEventListener('input', autoSaveLocalMemo);
@@ -1253,7 +1412,6 @@ ${currentSpecVal}`;
   categorySelect.addEventListener('change', renderSidebarList);
   keywordInput.addEventListener('input', renderSidebarList);
 
-  // 系統啟動
   fetchSheetData();
   loadTimelineFromSheet();
 </script>
