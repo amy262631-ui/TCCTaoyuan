@@ -1,0 +1,1291 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>台泥桃園-#3 拌合系統更新總包工程設備規範與時程甘特圖管理系統</title>
+  <style>
+    :root {
+      --primary: #1e40af;
+      --primary-hover: #1d4ed8;
+      --accent: #0284c7;
+      --bg: #f1f5f9;
+      --card-bg: #ffffff;
+      --text: #0f172a;
+      --text-muted: #475569;
+      --border: #cbd5e1;
+      --warning-bg: #fef3c7;
+      --warning-border: #f59e0b;
+      
+      --group-bg: #1e3a8a;
+      --group-text: #ffffff;
+      --item-odd: #ffffff;
+      --item-even: #f8fafc;
+      --item-hover: #e0f2fe;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Microsoft JhengHei", sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      font-size: 16px;
+    }
+
+    header {
+      background: linear-gradient(135deg, #1e3a8a, #0369a1);
+      color: white;
+      padding: 12px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+      box-shadow: 0 3px 6px rgba(0,0,0,0.12);
+      gap: 16px;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+    }
+
+    header h1 {
+      font-size: 1.35rem;
+      margin: 0;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+
+    .nav-tabs {
+      display: flex;
+      background: rgba(0, 0, 0, 0.25);
+      padding: 5px;
+      border-radius: 8px;
+      gap: 6px;
+    }
+
+    .nav-tab-btn {
+      background: transparent;
+      border: none;
+      color: #f1f5f9;
+      padding: 8px 18px;
+      font-size: 0.98rem;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .nav-tab-btn.active {
+      background: #ffffff;
+      color: var(--primary);
+      box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .btn {
+      background-color: var(--primary);
+      color: white;
+      border: 1px solid rgba(255,255,255,0.3);
+      padding: 8px 15px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.92rem;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+
+    .btn:hover { background-color: var(--primary-hover); }
+    .btn-add { background-color: #16a34a; }
+    .btn-add:hover { background-color: #15803d; }
+    .btn-save-spec { background-color: #0284c7; }
+    .btn-save-spec:hover { background-color: #0369a1; }
+    .btn-secondary { background-color: #334155; }
+    .btn-secondary:hover { background-color: #1e293b; }
+
+    .tab-view {
+      display: flex;
+      flex: 1;
+      height: calc(100vh - 65px);
+      overflow: hidden;
+    }
+
+    .sidebar {
+      width: 380px;
+      min-width: 320px;
+      max-width: 440px;
+      background-color: #ffffff;
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+    }
+
+    .sidebar-filter {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+      background-color: #f8fafc;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .sidebar-filter label {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--text-muted);
+    }
+
+    .sidebar-filter select, .sidebar-filter input {
+      padding: 9px 12px;
+      font-size: 0.95rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      outline: none;
+      background: white;
+      width: 100%;
+    }
+
+    .sidebar-list-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .list-item-btn {
+      text-align: left;
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      padding: 11px 14px;
+      border-radius: 7px;
+      font-size: 0.96rem;
+      cursor: pointer;
+      color: #334155;
+      line-height: 1.45;
+      transition: all 0.15s ease-in-out;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .list-item-btn:hover { background: #e2e8f0; border-color: #94a3b8; }
+    .list-item-btn.is-custom {
+      background-color: var(--warning-bg) !important;
+      border-color: var(--warning-border) !important;
+      color: #92400e !important;
+      font-weight: 600;
+    }
+
+    .list-item-btn.active {
+      background: var(--primary) !important;
+      color: white !important;
+      border-color: var(--primary) !important;
+      font-weight: 700;
+      box-shadow: 0 2px 6px rgba(30, 64, 175, 0.3);
+    }
+
+    .list-item-btn .item-id { font-size: 0.82rem; opacity: 0.9; display: block; margin-bottom: 2px; }
+
+    .content-area {
+      flex: 1;
+      background-color: var(--bg);
+      overflow-y: auto;
+      padding: 20px 28px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      box-shadow: 0 2px 5px rgba(0,0,0,0.04);
+      padding: 22px 26px;
+      margin-bottom: 18px;
+    }
+
+    .detail-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 2px solid #f1f5f9;
+      padding-bottom: 14px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .badge-id {
+      background: #e0f2fe;
+      color: #0369a1;
+      padding: 3px 10px;
+      border-radius: 5px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      margin-right: 8px;
+    }
+
+    .badge-custom {
+      background: #fef08a;
+      color: #854d0e;
+      padding: 3px 10px;
+      border-radius: 5px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      margin-left: 8px;
+    }
+
+    .memo-section {
+      background-color: #fffbeb;
+      border: 1px solid #fcd34d;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 18px;
+    }
+
+    .memo-grid {
+      display: grid;
+      grid-template-columns: 150px 160px 1fr;
+      gap: 14px;
+      align-items: start;
+    }
+
+    .form-group { display: flex; flex-direction: column; gap: 5px; }
+    .form-group label { font-size: 0.85rem; font-weight: 700; color: #78350f; }
+    .form-group input, .form-group textarea {
+      padding: 8px 12px;
+      font-size: 0.96rem;
+      border: 1px solid #fde68a;
+      border-radius: 6px;
+      outline: none;
+      background: white;
+    }
+
+    .diff-tag {
+      display: inline-block;
+      background: #f59e0b;
+      color: white;
+      font-size: 0.78rem;
+      padding: 3px 8px;
+      border-radius: 4px;
+      margin-top: 4px;
+      font-weight: 600;
+    }
+
+    .spec-header-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .spec-textarea {
+      width: 100%;
+      background-color: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-left: 6px solid var(--accent);
+      padding: 18px 22px;
+      border-radius: 8px;
+      font-size: 1.02rem;
+      line-height: 2.0;
+      color: #1e293b;
+      font-family: inherit;
+      resize: vertical;
+      outline: none;
+      min-height: 220px;
+    }
+
+    .spec-textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+    }
+
+    .gantt-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 22px 28px;
+      background-color: #ffffff;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .timeline-control-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+      background: #eef5fc;
+      padding: 14px 22px;
+      border-radius: 10px;
+      border: 1px solid #c8e1fb;
+      margin-bottom: 18px;
+    }
+
+    .timeline-control-left {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    .timeline-control-bar label {
+      font-weight: bold;
+      color: var(--primary);
+      font-size: 1.05rem;
+    }
+
+    .timeline-control-bar input[type="date"] {
+      padding: 8px 12px;
+      border: 1px solid #90caf9;
+      border-radius: 6px;
+      font-size: 1.02rem;
+      outline: none;
+      background: #fff;
+    }
+
+    .summary-badge {
+      background: #fff3e0;
+      border: 1px solid #ffe082;
+      padding: 8px 18px;
+      border-radius: 8px;
+      font-size: 1.02rem;
+      color: #c2410c;
+      font-weight: bold;
+    }
+
+    .gantt-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: 0.96rem;
+    }
+
+    .gantt-table th {
+      background-color: #f1f5f9;
+      color: #1e293b;
+      font-weight: 700;
+      font-size: 0.98rem;
+      padding: 12px 10px;
+      border-bottom: 2px solid #94a3b8;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .gantt-table td {
+      padding: 10px 10px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .gantt-table tr.group-row td {
+      background-color: var(--group-bg) !important;
+      color: var(--group-text) !important;
+      font-size: 1.02rem;
+      font-weight: 700;
+      border-top: 2px solid #0f172a;
+      border-bottom: 2px solid #0f172a;
+    }
+
+    .gantt-table tr.task-row:nth-child(even) td { background-color: var(--item-even); }
+    .gantt-table tr.task-row:nth-child(odd) td { background-color: var(--item-odd); }
+    .gantt-table tr.task-row:hover td { background-color: var(--item-hover) !important; }
+
+    .date-col {
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 1.02rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+    .date-col.start { color: #0284c7; }
+    .date-col.end { color: #d97706; }
+
+    .gantt-cell { width: 260px; padding: 6px 10px; }
+    .gantt-track {
+      position: relative;
+      background: #cbd5e1;
+      height: 18px;
+      border-radius: 9px;
+      overflow: hidden;
+    }
+
+    .gantt-bar {
+      position: absolute;
+      height: 100%;
+      background: linear-gradient(90deg, #00b0f0, #0284c7);
+      border-radius: 9px;
+      transition: all 0.3s ease;
+    }
+
+    .tag-budget {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 5px;
+      font-size: 0.82rem;
+      font-weight: bold;
+      background: #fef08a;
+      color: #854d0e;
+      margin-left: 8px;
+    }
+
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(15, 23, 42, 0.55);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .modal-content {
+      background: white;
+      width: 100%;
+      max-width: 650px;
+      border-radius: 10px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      max-height: 90vh;
+    }
+
+    .modal-header {
+      background: var(--primary);
+      color: white;
+      padding: 16px 22px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-body {
+      padding: 20px 24px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .modal-footer {
+      padding: 14px 22px;
+      background: #f1f5f9;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
+    .loading-state, .empty-state {
+      margin: auto;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 1.05rem;
+      padding: 40px 0;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div>
+      <h1>台泥桃園-#3 拌合系統更新總包工程設備規範與時程甘特圖管理系統</h1>
+      <span id="connStatus" style="font-size: 0.85rem; opacity: 0.9;">Google Sheets 連線中...</span>
+    </div>
+    
+    <div class="nav-tabs">
+      <button class="nav-tab-btn active" id="tabBtnSpec">📋 設備規範與備註</button>
+      <button class="nav-tab-btn" id="tabBtnGantt">📊 專案里程與甘特圖</button>
+    </div>
+  </div>
+
+  <div class="btn-group" id="specActions">
+    <button class="btn btn-add" id="openAddModalBtn">+ 新增工程設備</button>
+    <button class="btn btn-secondary" id="refreshBtn">重新整理</button>
+    <button class="btn btn-secondary" id="exportBtn">匯出備註</button>
+    <button class="btn btn-secondary" id="importBtn">匯入備註</button>
+    <input type="file" id="fileInput" accept=".json" style="display: none;">
+  </div>
+</header>
+
+<!-- 分頁 1: 設備需求規範 -->
+<div class="tab-view" id="viewSpec">
+  <aside class="sidebar">
+    <div class="sidebar-filter">
+      <div>
+        <label for="categorySelect">工程大類</label>
+        <select id="categorySelect">
+          <option value="">全部工程類別</option>
+        </select>
+      </div>
+      <div>
+        <label for="keywordInput">關鍵字檢索</label>
+        <input type="text" id="keywordInput" placeholder="搜尋名稱、馬達、型號、材質...">
+      </div>
+    </div>
+    <div class="sidebar-list-container" id="sidebarList">
+      <div class="loading-state">載入中，請稍候...</div>
+    </div>
+  </aside>
+
+  <main class="content-area">
+    <div id="emptyState" class="empty-state">
+      ← 請點選左側工項清單以檢視完整技術需求規範與專案備註
+    </div>
+
+    <div id="detailSection" style="display: none;">
+      <div class="card">
+        <div class="detail-header">
+          <div>
+            <h2 style="font-size: 1.35rem; display: flex; align-items: center;">
+              <span class="badge-id" id="displayId"></span>
+              <span id="displayName"></span>
+              <span class="badge-custom" id="displayCustomBadge" style="display: none;">手動新增</span>
+            </h2>
+            <div style="margin-top: 6px; font-size: 0.9rem; color: #64748b;" id="displayCategory"></div>
+          </div>
+          <button class="btn" id="copyBtn">複製工項與完整規範</button>
+        </div>
+
+        <div class="memo-section">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <span style="font-weight: 700; color: #92400e; font-size: 0.98rem;">專案調整與人工備註 (本地自動儲存)</span>
+            <span id="saveStatus" style="font-size: 0.85rem; color: #16a34a; font-weight: 600;"></span>
+          </div>
+          <div class="memo-grid">
+            <div class="form-group">
+              <label>合約規範數量</label>
+              <input type="text" id="contractQty" readonly style="background-color: #f1f5f9; color: #334155; font-weight: bold;">
+            </div>
+            <div class="form-group">
+              <label>實際需求數量</label>
+              <input type="text" id="actualQty" placeholder="輸入實際數量">
+              <div id="diffTagContainer"></div>
+            </div>
+            <div class="form-group">
+              <label>人工備註說明（規格修改 / 客戶要求 / 估價加註）</label>
+              <textarea id="memoInput" rows="2" placeholder="在此輸入備註細節..."></textarea>
+            </div>
+          </div>
+        </div>
+
+        <div class="spec-header-bar">
+          <label style="font-weight: 700; font-size: 0.95rem; color: #334155;">
+            完整技術需求規範 (可直接修改)：
+          </label>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span id="specUpdateStatus" style="font-size: 0.85rem; font-weight: 600;"></span>
+            <button class="btn btn-save-spec" id="saveSpecBtn">💾 儲存技術規範至雲端</button>
+          </div>
+        </div>
+        <textarea class="spec-textarea" id="displaySpec" placeholder="輸入或修改此設備的技術規範..."></textarea>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- 分頁 2: 里程甘特圖 -->
+<div class="tab-view" id="viewGantt" style="display: none;">
+  <div class="gantt-container">
+    <div class="timeline-control-bar">
+      <div class="timeline-control-left">
+        <label for="startDateInput">📅 專案開工日：</label>
+        <input type="date" id="startDateInput">
+        <button class="btn btn-add" id="saveTimelineBtn">儲存開工日至雲端</button>
+        <span id="timelineSyncStatus" style="font-size: 0.9rem; color: #334155;"></span>
+      </div>
+      <div class="summary-badge" id="projectEndBadge">全案最晚完工日：計算中...</div>
+    </div>
+
+    <div style="overflow-x: auto; flex: 1;">
+      <table class="gantt-table">
+        <thead>
+          <tr>
+            <th style="width: 65px; text-align: center;">項次</th>
+            <th style="min-width: 240px;">工作名稱</th>
+            <th style="width: 75px; text-align: center; white-space: nowrap;">第幾天起</th>
+            <th style="width: 75px; text-align: center; white-space: nowrap;">最晚截止</th>
+            <th style="width: 65px; text-align: center; white-space: nowrap;">工期(天)</th>
+            <th style="width: 125px; text-align: center;">最晚進場/開始</th>
+            <th style="width: 125px; text-align: center;">最晚必須完工</th>
+            <th style="width: 260px; text-align: center;">時程甘特進度 (總期 390 天)</th>
+          </tr>
+        </thead>
+        <tbody id="timelineTbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- 新增設備彈窗 Modal -->
+<div class="modal-overlay" id="addModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>新增工程設備與規範項目</h3>
+      <span id="closeModalBtn" style="cursor: pointer; font-size: 1.3rem;">&times;</span>
+    </div>
+    <div class="modal-body">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+        <div class="form-group">
+          <label>項次編號 (如: A13.1)</label>
+          <input type="text" id="newId" placeholder="例如：A13.1">
+        </div>
+        <div class="form-group">
+          <label>工程大類 (如: A13. 新增工程)</label>
+          <input type="text" id="newCategory" placeholder="例如：A13. 新增工程">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>設備 / 工項名稱</label>
+        <input type="text" id="newName" placeholder="例如：耐磨螺旋輸送機">
+      </div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+        <div class="form-group">
+          <label>合約規範數量</label>
+          <input type="text" id="newQty" placeholder="例如：2">
+        </div>
+        <div class="form-group">
+          <label>單位</label>
+          <input type="text" id="newUnit" placeholder="例如：SET、台、式">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>設備技術規範內文</label>
+        <textarea id="newSpec" rows="6" placeholder="請在此輸入詳細技術規範內容..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="cancelAddBtn">取消</button>
+      <button class="btn btn-add" id="saveNewItemBtn">儲存並同步至後端</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbwz_DHYFNXzcbMJV5nrfxredcgUDIPyDRRWGL5P0jnpt6DuYjU9mdAEFjA1kuCYzo8MyQ/exec';
+
+  let rawSpecifications = [];
+  const STORAGE_KEY = 'RMC_SPEC_MEMO_DATA_SPLIT_SHEET';
+  let userProjectData = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
+  let currentSelectedId = null;
+
+  const projectSchedule = [
+    { type: "group", code: "A1", name: "假設工程", totalDays: 30 },
+    { type: "task", code: "A1.1", name: "設備圖面", startDay: 0, endDay: 28 },
+    { type: "task", code: "A1.2", name: "假設工程", startDay: 0, endDay: 28 },
+    { type: "task", code: "A1.3", name: "#4拌合機系統水路遷移製作安裝", startDay: 0, endDay: 28 },
+    { type: "group", code: "A2", name: "舊設備拆除及清運工程", totalDays: 210 },
+    { type: "task", code: "A2.1", name: "既有設備拆除(舊RC基礎打除及復原)", startDay: 14, endDay: 56 },
+    { type: "task", code: "A2.2", name: "事業廢棄物清運處理", startDay: 63, endDay: 98 },
+    { type: "task", code: "—", name: "土木工程-卸料坑", startDay: 105, endDay: 182 },
+    { type: "task", code: "—", name: "土木工程-骨材庫", startDay: 140, endDay: 168 },
+    { type: "task", code: "—", name: "土木工程-拌合塔", startDay: 147, endDay: 210 },
+    { type: "group", code: "A3", name: "砂石收料設備", totalDays: 280 },
+    { type: "task", code: "A3.1", name: "收料室製作安裝", startDay: 266, endDay: 280 },
+    { type: "task", code: "A3.2", name: "砂石收料防塵屋製作安裝", startDay: 266, endDay: 280 },
+    { type: "task", code: "A3.3", name: "砂石卸料槽製作安裝", startDay: 259, endDay: 273 },
+    { type: "group", code: "A4", name: "66M入料帶運機", totalDays: 280 },
+    { type: "task", code: "A4.1", name: "入料帶運機製作安裝", startDay: 259, endDay: 280 },
+    { type: "group", code: "A5", name: "骨材庫設備", totalDays: 357 },
+    { type: "task", code: "A5.1", name: "骨材庫轉料斗製作安裝", startDay: 217, endDay: 224 },
+    { type: "task", code: "A5.2", name: "4M分料帶運機製作安裝", startDay: 217, endDay: 224 },
+    { type: "task", code: "A5.3", name: "800M3骨材庫製作安裝", startDay: 175, endDay: 217 },
+    { type: "task", code: "A5.4", name: "骨材庫之字梯製作安裝", startDay: 231, endDay: 238 },
+    { type: "task", code: "A5.5", name: "骨材限制門製作安裝", startDay: 224, endDay: 231 },
+    { type: "task", code: "A5.6", name: "砂石閘門製作安裝", startDay: 224, endDay: 231 },
+    { type: "task", code: "A5.7", name: "2m3骨材計量桶製作安裝", startDay: 175, endDay: 189 },
+    { type: "task", code: "A5.8", name: "骨材庫避雷針製作安裝", startDay: 329, endDay: 357 },
+    { type: "group", code: "A6", name: "46M出料帶運機", totalDays: 273 },
+    { type: "task", code: "A6.1", name: "出料帶運機製作安裝", startDay: 245, endDay: 273 },
+    { type: "group", code: "A7", name: "拌合塔結構補強及設備", totalDays: 280 },
+    { type: "task", code: "A7.4", name: "4m3骨材待拌槽製作安裝", startDay: 245, endDay: 259 },
+    { type: "task", code: "A7.5", name: "骨材滑槽製作安裝", startDay: 245, endDay: 259 },
+    { type: "task", code: "A7.6", name: "2m3膠結材計量桶製作安裝", startDay: 245, endDay: 259 },
+    { type: "task", code: "A7.7", name: "膠結材滑槽製作安裝", startDay: 238, endDay: 252 },
+    { type: "task", code: "A7.8", name: "0.5m3藥劑暫存槽製作安裝", startDay: 259, endDay: 273 },
+    { type: "task", code: "A7.9", name: "0.03m3藥劑計量設備製作安裝", startDay: 259, endDay: 273 },
+    { type: "task", code: "A7.10", name: "8m3拌合水暫存槽製作安裝", startDay: 259, endDay: 273 },
+    { type: "task", code: "A7.11", name: "1m3拌合水計量桶製作安裝", startDay: 252, endDay: 266 },
+    { type: "task", code: "A7.12", name: "1m3汙水暫存槽製作安裝", startDay: 259, endDay: 273 },
+    { type: "task", code: "A7.13", name: "1m3汙水計量桶製作安裝", startDay: 259, endDay: 273 },
+    { type: "task", code: "A7.14", name: "5m3自來水暫存槽製作安裝", startDay: 259, endDay: 273 },
+    { type: "task", code: "A7.15", name: "39m3拌合機集塵機製作安裝", startDay: 266, endDay: 280 },
+    { type: "task", code: "A7.16", name: "雙馬達拌合機", startDay: 224, endDay: 245 },
+    { type: "task", code: "A7.17", name: "混凝土儲槽製作安裝", startDay: 224, endDay: 238 },
+    { type: "task", code: "A7.18", name: "夾具製作安裝", startDay: 224, endDay: 238 },
+    { type: "task", code: "A7.19", name: "混凝土儲槽電鍍維修平台製作安裝", startDay: 224, endDay: 238 },
+    { type: "task", code: "A7.20", name: "拌合塔製作安裝", startDay: 224, endDay: 280 },
+    { type: "group", code: "A8", name: "膠結材儲桶", totalDays: 360 },
+    { type: "task", code: "A8.1", name: "120頓膠結材貯桶製作安裝", startDay: 238, endDay: 287 },
+    { type: "task", code: "A8.2", name: "250頓膠結材貯桶250T製作安裝", startDay: 238, endDay: 287 },
+    { type: "task", code: "A8.3", name: "500頓膠結材貯桶500T製作安裝", startDay: 238, endDay: 287 },
+    { type: "task", code: "A8.4", name: "儲桶之字樓梯製作安裝", startDay: 252, endDay: 273 },
+    { type: "task", code: "A8.5", name: "膠結材限制門製作安裝", startDay: 273, endDay: 287 },
+    { type: "task", code: "A8.6", name: "膠結材蝶閥製作安裝", startDay: 273, endDay: 287 },
+    { type: "task", code: "A8.7", name: "28M3貯桶負壓式集塵機製作安裝", startDay: 273, endDay: 280 },
+    { type: "task", code: "A8.8", name: "子母型螺運機計量設備製作安裝", startDay: 266, endDay: 280 },
+    { type: "task", code: "A8.9", name: "50HP膠結材輸送空壓機備安裝", startDay: 245, endDay: 259 },
+    { type: "task", code: "A8.10", name: "貯桶料位警示與集塵操作設備製作安裝", startDay: 273, endDay: 357 },
+    { type: "task", code: "A8.11", name: "水泥庫避雷針製作安裝", startDay: 329, endDay: 357 },
+    { type: "group", code: "A9", name: "壓縮空氣系統", totalDays: 360 },
+    { type: "task", code: "A9.1", name: "空壓系統安裝", startDay: 273, endDay: 357 },
+    { type: "group", code: "A10", name: "儀控及電力配線工程", totalDays: 360 },
+    { type: "task", code: "A10.1", name: "600V XLPE 250mm2*1C 動力電纜配線工程", startDay: 273, endDay: 357 },
+    { type: "task", code: "A10.2", name: "600V PVC 38mm2*1C 接地線配線工程", startDay: 273, endDay: 357 },
+    { type: "task", code: "A10.3", name: "儀控操作室", startDay: 273, endDay: 357 },
+    { type: "task", code: "A10.4", name: "骨材入庫動力盤", startDay: 273, endDay: 357 },
+    { type: "task", code: "A10.5", name: "拌合系統動力盤", startDay: 273, endDay: 357 },
+    { type: "task", code: "A10.6", name: "製程電腦操作盤", startDay: 273, endDay: 357 },
+    { type: "task", code: "A10.7", name: "辦公室遠端配比讀寫／備援電腦", startDay: 273, endDay: 357 },
+    { type: "task", code: "A10.8", name: "電子式磅", startDay: 273, endDay: 357 },
+    { type: "task", code: "A10.9", name: "CCTV 影像監視設備", startDay: 273, endDay: 357 },
+    { type: "task", code: "A10.10", name: "安全防護設備", startDay: 273, endDay: 357 },
+    { type: "task", code: "A10.11", name: "浪板覆蓋", startDay: 329, endDay: 357 },
+    { type: "task", code: "完工", name: "項目正式運轉", startDay: 364, endDay: 390 }
+  ];
+  const TOTAL_PROJECT_DAYS = 390;
+
+  const tabBtnSpec = document.getElementById('tabBtnSpec');
+  const tabBtnGantt = document.getElementById('tabBtnGantt');
+  const viewSpec = document.getElementById('viewSpec');
+  const viewGantt = document.getElementById('viewGantt');
+  const specActions = document.getElementById('specActions');
+
+  const categorySelect = document.getElementById('categorySelect');
+  const keywordInput = document.getElementById('keywordInput');
+  const sidebarList = document.getElementById('sidebarList');
+  const connStatus = document.getElementById('connStatus');
+
+  const emptyState = document.getElementById('emptyState');
+  const detailSection = document.getElementById('detailSection');
+  const displayId = document.getElementById('displayId');
+  const displayName = document.getElementById('displayName');
+  const displayCategory = document.getElementById('displayCategory');
+  const displayCustomBadge = document.getElementById('displayCustomBadge');
+  const displaySpec = document.getElementById('displaySpec');
+
+  const contractQty = document.getElementById('contractQty');
+  const actualQty = document.getElementById('actualQty');
+  const memoInput = document.getElementById('memoInput');
+  const diffTagContainer = document.getElementById('diffTagContainer');
+  const saveStatus = document.getElementById('saveStatus');
+  const copyBtn = document.getElementById('copyBtn');
+  const saveSpecBtn = document.getElementById('saveSpecBtn');
+  const specUpdateStatus = document.getElementById('specUpdateStatus');
+
+  const refreshBtn = document.getElementById('refreshBtn');
+  const exportBtn = document.getElementById('exportBtn');
+  const importBtn = document.getElementById('importBtn');
+  const fileInput = document.getElementById('fileInput');
+
+  const addModal = document.getElementById('addModal');
+  const openAddModalBtn = document.getElementById('openAddModalBtn');
+  const closeModalBtn = document.getElementById('closeModalBtn');
+  const cancelAddBtn = document.getElementById('cancelAddBtn');
+  const saveNewItemBtn = document.getElementById('saveNewItemBtn');
+
+  const newId = document.getElementById('newId');
+  const newCategory = document.getElementById('newCategory');
+  const newName = document.getElementById('newName');
+  const newQty = document.getElementById('newQty');
+  const newUnit = document.getElementById('newUnit');
+  const newSpec = document.getElementById('newSpec');
+
+  const startDateInput = document.getElementById('startDateInput');
+  const saveTimelineBtn = document.getElementById('saveTimelineBtn');
+  const timelineSyncStatus = document.getElementById('timelineSyncStatus');
+  const projectEndBadge = document.getElementById('projectEndBadge');
+  const timelineTbody = document.getElementById('timelineTbody');
+
+  tabBtnSpec.addEventListener('click', () => {
+    tabBtnSpec.classList.add('active');
+    tabBtnGantt.classList.remove('active');
+    viewSpec.style.display = 'flex';
+    viewGantt.style.display = 'none';
+    specActions.style.display = 'flex';
+  });
+
+  tabBtnGantt.addEventListener('click', () => {
+    tabBtnGantt.classList.add('active');
+    tabBtnSpec.classList.remove('active');
+    viewSpec.style.display = 'none';
+    viewGantt.style.display = 'flex';
+    specActions.style.display = 'none';
+  });
+
+  function addDays(baseDate, days) {
+    const result = new Date(baseDate);
+    result.setDate(result.getDate() + days);
+    return result;
+  }
+
+  function formatDate(date) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}/${m}/${d}`;
+  }
+
+  function renderTimeline(startDateStr) {
+    if (!startDateStr) return;
+    const startDate = new Date(startDateStr);
+    timelineTbody.innerHTML = '';
+
+    const finalDate = addDays(startDate, TOTAL_PROJECT_DAYS);
+    projectEndBadge.textContent = `全案最晚完工日：${formatDate(finalDate)} (第 ${TOTAL_PROJECT_DAYS} 天)`;
+
+    projectSchedule.forEach(item => {
+      const tr = document.createElement('tr');
+
+      if (item.type === 'group') {
+        tr.className = 'group-row';
+        const groupEndDate = addDays(startDate, item.totalDays);
+        tr.innerHTML = `
+          <td style="text-align: center;">${item.code}</td>
+          <td colspan="4">
+            ${item.name} 
+            <span class="tag-budget">大項總預算：${item.totalDays} 天</span>
+          </td>
+          <td class="date-col start" style="text-align: center; color: #93c5fd;">${formatDate(startDate)}</td>
+          <td class="date-col end" style="text-align: center; color: #fed7aa;">${formatDate(groupEndDate)}</td>
+          <td style="text-align: center; color: #cbd5e1;">-</td>
+        `;
+      } else {
+        tr.className = 'task-row';
+        const startD = addDays(startDate, item.startDay);
+        const endD = addDays(startDate, item.endDay);
+        const duration = item.endDay - item.startDay;
+
+        const leftPercent = (item.startDay / TOTAL_PROJECT_DAYS) * 100;
+        const widthPercent = Math.max((duration / TOTAL_PROJECT_DAYS) * 100, 1.4);
+
+        tr.innerHTML = `
+          <td style="text-align: center;"><strong>${item.code}</strong></td>
+          <td style="font-weight: 500;">${item.name}</td>
+          <td style="text-align: center; font-family: monospace; font-size: 0.95rem;">${item.startDay}</td>
+          <td style="text-align: center; font-family: monospace; font-size: 0.95rem;">${item.endDay}</td>
+          <td style="text-align: center; font-weight: bold;">${duration}</td>
+          <td class="date-col start" style="text-align: center;">${formatDate(startD)}</td>
+          <td class="date-col end" style="text-align: center;">${formatDate(endD)}</td>
+          <td class="gantt-cell">
+            <div class="gantt-track" title="第 ${item.startDay} 天 ~ 第 ${item.endDay} 天">
+              <div class="gantt-bar" style="left: ${leftPercent}%; width: ${widthPercent}%;"></div>
+            </div>
+          </td>
+        `;
+      }
+      timelineTbody.appendChild(tr);
+    });
+  }
+
+  async function loadTimelineFromSheet() {
+    timelineSyncStatus.textContent = '🔄 讀取雲端開工日...';
+    try {
+      const res = await fetch(`${GAS_API_URL}?action=getTimeline`);
+      const data = await res.json();
+      if (data.success && data.startDate) {
+        const parsedDate = new Date(data.startDate).toISOString().split('T')[0];
+        startDateInput.value = parsedDate;
+        renderTimeline(parsedDate);
+        timelineSyncStatus.textContent = `🟢 已同步雲端紀錄 (${parsedDate})`;
+      } else {
+        const today = new Date().toISOString().split('T')[0];
+        startDateInput.value = today;
+        renderTimeline(today);
+        timelineSyncStatus.textContent = '⚪ 試算表尚無開工日，預設為今日';
+      }
+    } catch (e) {
+      const today = new Date().toISOString().split('T')[0];
+      startDateInput.value = today;
+      renderTimeline(today);
+      timelineSyncStatus.textContent = '⚠️ 離線預設今日';
+    }
+  }
+
+  saveTimelineBtn.addEventListener('click', async () => {
+    const sDate = startDateInput.value;
+    if (!sDate) {
+      alert('請先選擇開工日');
+      return;
+    }
+
+    const finalDate = formatDate(addDays(new Date(sDate), TOTAL_PROJECT_DAYS));
+    saveTimelineBtn.disabled = true;
+    timelineSyncStatus.textContent = '⏳ 正在寫入試算表...';
+
+    try {
+      const params = new URLSearchParams({
+        action: 'saveTimeline',
+        startDate: sDate,
+        endDate: finalDate,
+        projectName: '台泥桃園-#3 拌合系統更新總包工程'
+      });
+      const res = await fetch(`${GAS_API_URL}?${params.toString()}`);
+      const data = await res.json();
+      if (data.success) {
+        timelineSyncStatus.textContent = `✅ 已成功記錄至 Google Sheets (${sDate})`;
+      } else {
+        throw new Error(data.error);
+      }
+    } catch (err) {
+      timelineSyncStatus.textContent = `❌ 儲存失敗：${err.message}`;
+    } finally {
+      saveTimelineBtn.disabled = false;
+    }
+  });
+
+  startDateInput.addEventListener('change', (e) => {
+    if (e.target.value) renderTimeline(e.target.value);
+  });
+
+  async function fetchSheetData() {
+    connStatus.textContent = '資料來源：Google Sheets 讀取中...';
+    sidebarList.innerHTML = '<div class="loading-state">載入雲端試算表資料中...</div>';
+    
+    try {
+      const response = await fetch(GAS_API_URL);
+      const data = await response.json();
+
+      if (Array.isArray(data)) {
+        rawSpecifications = data;
+        connStatus.textContent = `連線成功！共載入 ${rawSpecifications.length} 筆設備規範資料`;
+        initControls();
+      } else {
+        throw new Error(data.error || '資料格式錯誤');
+      }
+    } catch (err) {
+      connStatus.textContent = `連線失敗：${err.message}`;
+      sidebarList.innerHTML = `<div class="loading-state" style="color: #ef4444;">載入失敗：${err.message}</div>`;
+    }
+  }
+
+  function initControls() {
+    const currentCat = categorySelect.value;
+    categorySelect.innerHTML = '<option value="">全部工程類別</option>';
+    const categories = [...new Set(rawSpecifications.map(item => item.category))];
+    categories.forEach(cat => {
+      const opt = document.createElement('option');
+      opt.value = cat;
+      opt.textContent = cat;
+      categorySelect.appendChild(opt);
+    });
+
+    if (currentCat) categorySelect.value = currentCat;
+    renderSidebarList();
+
+    if (rawSpecifications.length > 0 && !currentSelectedId) {
+      showDetail(rawSpecifications[0].id);
+    }
+  }
+
+  function renderSidebarList() {
+    const selectedCat = categorySelect.value;
+    const keyword = keywordInput.value.trim().toLowerCase();
+    sidebarList.innerHTML = '';
+
+    const filtered = rawSpecifications.filter(item => {
+      const matchCat = !selectedCat || item.category === selectedCat;
+      const matchKey = !keyword || 
+                       item.name.toLowerCase().includes(keyword) || 
+                       item.id.toLowerCase().includes(keyword) || 
+                       item.spec.toLowerCase().includes(keyword);
+      return matchCat && matchKey;
+    });
+
+    if (filtered.length === 0) {
+      sidebarList.innerHTML = '<div class="loading-state">無符合條件的工項</div>';
+      return;
+    }
+
+    filtered.forEach(item => {
+      const btn = document.createElement('button');
+      btn.className = 'list-item-btn';
+      btn.setAttribute('data-id', item.id);
+
+      const memoInfo = userProjectData[item.id];
+      const hasMemo = memoInfo && (memoInfo.memo || (memoInfo.actualQty && memoInfo.actualQty !== item.qty));
+      
+      if (item.isCustom || hasMemo) {
+        btn.classList.add('is-custom');
+      }
+
+      if (currentSelectedId === item.id) {
+        btn.classList.add('active');
+      }
+
+      btn.innerHTML = `
+        <div>
+          <span class="item-id">[${item.id}]</span>
+          <span>${item.name}</span>
+        </div>
+        <span style="font-size: 0.85rem; opacity: 0.85;">${(item.isCustom || hasMemo) ? '★' : ''}</span>
+      `;
+
+      btn.addEventListener('click', () => {
+        showDetail(item.id);
+      });
+
+      sidebarList.appendChild(btn);
+    });
+  }
+
+  function showDetail(id) {
+    currentSelectedId = id;
+    const item = rawSpecifications.find(d => d.id === id);
+
+    if (!item) {
+      emptyState.style.display = 'block';
+      detailSection.style.display = 'none';
+      return;
+    }
+
+    emptyState.style.display = 'none';
+    detailSection.style.display = 'block';
+
+    displayId.textContent = item.id;
+    displayName.textContent = item.name;
+    displayCategory.textContent = `所屬分類：${item.category}`;
+    displaySpec.value = item.spec || '';
+
+    displayCustomBadge.style.display = item.isCustom ? 'inline-block' : 'none';
+    contractQty.value = `${item.qty} ${item.unit}`;
+
+    const savedData = userProjectData[item.id] || {};
+    actualQty.value = savedData.actualQty !== undefined ? savedData.actualQty : item.qty;
+    memoInput.value = savedData.memo || '';
+
+    updateQtyDifference(item.qty);
+
+    document.querySelectorAll('.list-item-btn').forEach(b => {
+      if (b.getAttribute('data-id') === id) {
+        b.classList.add('active');
+      } else {
+        b.classList.remove('active');
+      }
+    });
+  }
+
+  saveSpecBtn.addEventListener('click', async () => {
+    if (!currentSelectedId) return;
+
+    const item = rawSpecifications.find(d => d.id === currentSelectedId);
+    if (!item) return;
+
+    const updatedSpec = displaySpec.value.trim();
+    saveSpecBtn.disabled = true;
+    specUpdateStatus.textContent = '⏳ 正在儲存至 Google 試算表...';
+    specUpdateStatus.style.color = '#0284c7';
+
+    try {
+      const params = new URLSearchParams({
+        action: 'updateSpec',
+        id: item.id,
+        spec: updatedSpec
+      });
+
+      const response = await fetch(`${GAS_API_URL}?${params.toString()}`);
+      const resData = await response.json();
+
+      if (!resData.success) {
+        throw new Error(resData.error || '後端更新失敗');
+      }
+
+      item.spec = updatedSpec;
+      specUpdateStatus.textContent = '✅ 技術規範已同步至 Google 試算表！';
+      specUpdateStatus.style.color = '#16a34a';
+
+      setTimeout(() => {
+        specUpdateStatus.textContent = '';
+      }, 2500);
+    } catch (err) {
+      specUpdateStatus.textContent = `❌ 儲存失敗：${err.message}`;
+      specUpdateStatus.style.color = '#ef4444';
+    } finally {
+      saveSpecBtn.disabled = false;
+    }
+  });
+
+  function updateQtyDifference(origQty) {
+    diffTagContainer.innerHTML = '';
+    const currentActual = actualQty.value.trim();
+    if (currentActual && currentActual !== origQty) {
+      const tag = document.createElement('span');
+      tag.className = 'diff-tag';
+      tag.textContent = `數量異動：原合約 ${origQty} ➔ 實際 ${currentActual}`;
+      diffTagContainer.appendChild(tag);
+    }
+  }
+
+  function autoSaveMemo() {
+    if (!currentSelectedId) return;
+    const item = rawSpecifications.find(d => d.id === currentSelectedId);
+    if (!item) return;
+
+    userProjectData[currentSelectedId] = {
+      actualQty: actualQty.value.trim(),
+      memo: memoInput.value.trim()
+    };
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(userProjectData));
+    updateQtyDifference(item.qty);
+
+    saveStatus.textContent = '● 備註已儲存';
+    setTimeout(() => { saveStatus.textContent = ''; }, 1500);
+    renderSidebarList();
+  }
+
+  saveNewItemBtn.addEventListener('click', async () => {
+    const idVal = newId.value.trim();
+    const catVal = newCategory.value.trim() || '自訂設備';
+    const nameVal = newName.value.trim();
+    const qtyVal = newQty.value.trim() || '1';
+    const unitVal = newUnit.value.trim() || 'SET';
+    const specVal = newSpec.value.trim();
+
+    if (!nameVal) {
+      alert('請填寫設備 / 工項名稱！');
+      return;
+    }
+
+    const newItem = {
+      id: idVal || `NEW-${Date.now().toString().slice(-4)}`,
+      category: catVal,
+      name: nameVal,
+      qty: qtyVal,
+      unit: unitVal,
+      spec: specVal,
+      isCustom: true
+    };
+
+    saveNewItemBtn.textContent = '正在寫入後端...';
+    saveNewItemBtn.disabled = true;
+
+    try {
+      const params = new URLSearchParams({
+        action: 'add',
+        id: newItem.id,
+        category: newItem.category,
+        name: newItem.name,
+        qty: newItem.qty,
+        unit: newItem.unit,
+        spec: newItem.spec
+      });
+
+      const response = await fetch(`${GAS_API_URL}?${params.toString()}`);
+      const resData = await response.json();
+
+      if (!resData.success) throw new Error(resData.error || '後端寫入失敗');
+
+      rawSpecifications.push(newItem);
+      initControls();
+      showDetail(newItem.id);
+
+      newId.value = '';
+      newCategory.value = '';
+      newName.value = '';
+      newQty.value = '';
+      newUnit.value = '';
+      newSpec.value = '';
+      addModal.style.display = 'none';
+
+      alert('設備項目新增成功，已同步寫入 Google Sheets 後端！');
+    } catch (err) {
+      alert(`寫入失敗：${err.message}`);
+    } finally {
+      saveNewItemBtn.textContent = '儲存並同步至後端';
+      saveNewItemBtn.disabled = false;
+    }
+  });
+
+  openAddModalBtn.addEventListener('click', () => addModal.style.display = 'flex');
+  closeModalBtn.addEventListener('click', () => addModal.style.display = 'none');
+  cancelAddBtn.addEventListener('click', () => addModal.style.display = 'none');
+
+  copyBtn.addEventListener('click', () => {
+    const item = rawSpecifications.find(d => d.id === currentSelectedId);
+    if (!item) return;
+
+    const actQtyVal = actualQty.value.trim() || item.qty;
+    const memoVal = memoInput.value.trim() || '無';
+    const currentSpecVal = displaySpec.value.trim();
+
+    const textToCopy = `【${item.id} ${item.name}】
+合約數量：${item.qty} ${item.unit}
+實際需求數量：${actQtyVal} ${item.unit}
+專案人工備註：${memoVal}
+
+技術規範內容：
+${currentSpecVal}`;
+
+    navigator.clipboard.writeText(textToCopy).then(() => {
+      const origText = copyBtn.textContent;
+      copyBtn.textContent = '已複製內容！';
+      copyBtn.style.backgroundColor = '#16a34a';
+      setTimeout(() => {
+        copyBtn.textContent = origText;
+        copyBtn.style.backgroundColor = '';
+      }, 1500);
+    });
+  });
+
+  exportBtn.addEventListener('click', () => {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(userProjectData, null, 2));
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute("href", dataStr);
+    downloadAnchor.setAttribute("download", `預拌工程專案備註_${new Date().toISOString().slice(0,10)}.json`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+  });
+
+  importBtn.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(evt) {
+      try {
+        userProjectData = JSON.parse(evt.target.result);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(userProjectData));
+        alert('備註檔案匯入成功！');
+        renderSidebarList();
+        if (currentSelectedId) showDetail(currentSelectedId);
+      } catch(err) {
+        alert('檔案格式錯誤，請確認為有效的 JSON 檔案。');
+      }
+    };
+    reader.readAsText(file);
+  });
+
+  refreshBtn.addEventListener('click', fetchSheetData);
+  actualQty.addEventListener('input', autoSaveMemo);
+  memoInput.addEventListener('input', autoSaveMemo);
+  categorySelect.addEventListener('change', renderSidebarList);
+  keywordInput.addEventListener('input', renderSidebarList);
+
+  fetchSheetData();
+  loadTimelineFromSheet();
+</script>
+
+</body>
+</html>
