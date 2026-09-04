@@ -142,6 +142,7 @@
       gap: 8px;
     }
 
+    /* 左側工項按鈕 */
     .list-item-btn {
       text-align: left;
       background: #f8fafc;
@@ -159,11 +160,13 @@
     }
 
     .list-item-btn:hover { background: #e2e8f0; border-color: #94a3b8; }
-    .list-item-btn.is-custom {
+    
+    /* 規範修改、數量異動、自訂項目：套用醒目黃底樣式 */
+    .list-item-btn.is-custom, .list-item-btn.has-change {
       background-color: var(--warning-bg) !important;
       border-color: var(--warning-border) !important;
       color: #92400e !important;
-      font-weight: 600;
+      font-weight: 700;
     }
 
     .list-item-btn.active {
@@ -225,6 +228,16 @@
       margin-left: 8px;
     }
 
+    .badge-modified {
+      background: #fed7aa;
+      color: #9a3412;
+      padding: 3px 10px;
+      border-radius: 5px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      margin-left: 8px;
+    }
+
     .memo-section {
       background-color: #fffbeb;
       border: 1px solid #fcd34d;
@@ -269,6 +282,40 @@
       margin-bottom: 8px;
     }
 
+    /* 規範比對呈現盒 (新增文字綠底，刪除文字紅底) */
+    .spec-diff-box {
+      display: none;
+      background-color: #f8fafc;
+      border: 1px solid #cbd5e1;
+      border-left: 6px solid #16a34a;
+      padding: 14px 18px;
+      border-radius: 8px;
+      font-size: 0.98rem;
+      line-height: 1.8;
+      margin-bottom: 12px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .diff-ins {
+      background-color: #bbf7d0;
+      color: #14532d;
+      font-weight: bold;
+      padding: 2px 4px;
+      border-radius: 4px;
+      text-decoration: none;
+      border-bottom: 2px solid #22c55e;
+    }
+
+    .diff-del {
+      background-color: #fecaca;
+      color: #7f1d1d;
+      text-decoration: line-through;
+      padding: 2px 4px;
+      border-radius: 4px;
+      opacity: 0.75;
+    }
+
     .spec-textarea {
       width: 100%;
       background-color: #ffffff;
@@ -290,6 +337,7 @@
       box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
     }
 
+    /* 甘特圖相關 */
     .gantt-container {
       flex: 1;
       overflow-y: auto;
@@ -540,6 +588,7 @@
               <span class="badge-id" id="displayId"></span>
               <span id="displayName"></span>
               <span class="badge-custom" id="displayCustomBadge" style="display: none;">手動新增</span>
+              <span class="badge-modified" id="displayModifiedBadge" style="display: none;">規範已修改</span>
             </h2>
             <div style="margin-top: 6px; font-size: 0.9rem; color: #64748b;" id="displayCategory"></div>
           </div>
@@ -574,9 +623,13 @@
 
         <div class="spec-header-bar">
           <label style="font-weight: 700; font-size: 0.95rem; color: #334155;">
-            完整技術需求規範 (可直接修改，點右上角按鈕同步至雲端)：
+            完整技術需求規範 (可直接編輯，增修文字將即時標色比對)：
           </label>
         </div>
+        
+        <!-- 規範增修比對視覺區 -->
+        <div class="spec-diff-box" id="specDiffBox"></div>
+
         <textarea class="spec-textarea" id="displaySpec" placeholder="輸入或修改此設備的技術規範..."></textarea>
       </div>
     </div>
@@ -691,7 +744,9 @@
   const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbwz_DHYFNXzcbMJV5nrfxredcgUDIPyDRRWGL5P0jnpt6DuYjU9mdAEFjA1kuCYzo8MyQ/exec';
 
   let rawSpecifications = [];
+  let originalSpecsMap = {}; // 記錄原始規範作為修改比對基準
   const STORAGE_KEY = 'RMC_SPEC_MEMO_DATA_SPLIT_SHEET';
+  const ORIG_SPEC_STORAGE_KEY = 'RMC_ORIGINAL_SPECS_MAP';
   let userProjectData = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
   let currentSelectedId = null;
 
@@ -798,7 +853,9 @@
   const displayName = document.getElementById('displayName');
   const displayCategory = document.getElementById('displayCategory');
   const displayCustomBadge = document.getElementById('displayCustomBadge');
+  const displayModifiedBadge = document.getElementById('displayModifiedBadge');
   const displaySpec = document.getElementById('displaySpec');
+  const specDiffBox = document.getElementById('specDiffBox');
 
   const contractQty = document.getElementById('contractQty');
   const actualQty = document.getElementById('actualQty');
@@ -993,7 +1050,7 @@
     } catch (e) {
       const today = new Date().toISOString().split('T')[0];
       startDateInput.value = today;
-      renderTimeline();
+      renderTimeline(today);
       timelineSyncStatus.textContent = '⚠️ 離線預設今日';
     }
   }
@@ -1036,6 +1093,7 @@
     renderTimeline();
   });
 
+  // 讀取設備資料
   async function fetchSheetData() {
     connStatus.textContent = '資料來源：Google Sheets 讀取中...';
     sidebarList.innerHTML = '<div class="loading-state">載入雲端試算表資料中...</div>';
@@ -1046,6 +1104,17 @@
 
       if (Array.isArray(data)) {
         rawSpecifications = data;
+
+        // 載入或記錄初始規範對照表
+        const savedOrigSpecs = JSON.parse(localStorage.getItem(ORIG_SPEC_STORAGE_KEY)) || {};
+        rawSpecifications.forEach(item => {
+          if (!savedOrigSpecs[item.id]) {
+            savedOrigSpecs[item.id] = item.spec || '';
+          }
+        });
+        originalSpecsMap = savedOrigSpecs;
+        localStorage.setItem(ORIG_SPEC_STORAGE_KEY, JSON.stringify(originalSpecsMap));
+
         connStatus.textContent = `連線成功！共載入 ${rawSpecifications.length} 筆最新設備規範資料`;
         initControls();
       } else {
@@ -1080,6 +1149,23 @@
     }
   }
 
+  // 檢查是否為異動項目 (規範修改 / 數量調整 / 有備註 / 自訂)
+  function isItemChanged(item) {
+    if (item.isCustom) return true;
+
+    const localData = userProjectData[item.id];
+    const curSpec = (localData && localData.spec !== undefined) ? localData.spec : (item.spec || '');
+    const actQ = (localData && localData.actualQty !== undefined) ? localData.actualQty : (item.actualQty !== undefined ? item.actualQty : item.qty);
+    const mem = (localData && localData.memo !== undefined) ? localData.memo : (item.memo || '');
+
+    const origSpec = originalSpecsMap[item.id] || '';
+    const isSpecModified = curSpec.trim() !== origSpec.trim();
+    const isQtyModified = actQ !== undefined && actQ !== '' && String(actQ) !== String(item.qty);
+    const isMemoAdded = mem && mem.trim() !== '';
+
+    return isSpecModified || isQtyModified || isMemoAdded;
+  }
+
   function renderSidebarList() {
     const selectedCat = categorySelect.value;
     const keyword = keywordInput.value.trim().toLowerCase();
@@ -1104,14 +1190,11 @@
       btn.className = 'list-item-btn';
       btn.setAttribute('data-id', item.id);
 
-      const localData = userProjectData[item.id];
-      const actQ = (localData && localData.actualQty !== undefined) ? localData.actualQty : item.actualQty;
-      const mem = (localData && localData.memo !== undefined) ? localData.memo : item.memo;
-
-      const hasChange = (mem && mem.trim() !== '') || (actQ !== undefined && actQ !== '' && String(actQ) !== String(item.qty));
+      const hasChange = isItemChanged(item);
       
-      if (item.isCustom || hasChange) {
-        btn.classList.add('is-custom');
+      // 若規範有改、數量有改、有備註，套用黃底樣式
+      if (hasChange) {
+        btn.classList.add('has-change');
       }
 
       if (currentSelectedId === item.id) {
@@ -1123,7 +1206,7 @@
           <span class="item-id">[${item.id}]</span>
           <span>${item.name}</span>
         </div>
-        <span style="font-size: 0.85rem; opacity: 0.85;">${(item.isCustom || hasChange) ? '★' : ''}</span>
+        <span style="font-size: 0.95rem; font-weight: bold; color: ${hasChange ? '#d97706' : '#94a3b8'};">${hasChange ? '★' : ''}</span>
       `;
 
       btn.addEventListener('click', () => {
@@ -1132,6 +1215,54 @@
 
       sidebarList.appendChild(btn);
     });
+  }
+
+  // 純前端簡易文字差異比對演算法
+  function generateDiffHTML(originalText, newText) {
+    if (!originalText && !newText) return '';
+    if (originalText === newText) return '';
+
+    const origLines = (originalText || '').split('\n');
+    const newLines = (newText || '').split('\n');
+    let html = '';
+
+    let maxL = Math.max(origLines.length, newLines.length);
+    for (let i = 0; i < maxL; i++) {
+      let oLine = origLines[i];
+      let nLine = newLines[i];
+
+      if (oLine === undefined && nLine !== undefined) {
+        html += `<span class="diff-ins">+ ${escapeHtml(nLine)}</span>\n`;
+      } else if (nLine === undefined && oLine !== undefined) {
+        html += `<span class="diff-del">- ${escapeHtml(oLine)}</span>\n`;
+      } else if (oLine !== nLine) {
+        html += `<span class="diff-del">- ${escapeHtml(oLine)}</span>\n<span class="diff-ins">+ ${escapeHtml(nLine)}</span>\n`;
+      } else {
+        html += `${escapeHtml(nLine)}\n`;
+      }
+    }
+    return html;
+  }
+
+  function escapeHtml(str) {
+    return (str || '').replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  function updateSpecDiffVisual() {
+    if (!currentSelectedId) return;
+    const origSpec = originalSpecsMap[currentSelectedId] || '';
+    const currentSpec = displaySpec.value;
+
+    if (origSpec.trim() !== currentSpec.trim()) {
+      displayModifiedBadge.style.display = 'inline-block';
+      const diffHTML = generateDiffHTML(origSpec, currentSpec);
+      specDiffBox.innerHTML = `<strong>【規範增修即時對照】</strong> (綠底標記為新增/異動內容)：\n\n${diffHTML}`;
+      specDiffBox.style.display = 'block';
+    } else {
+      displayModifiedBadge.style.display = 'none';
+      specDiffBox.style.display = 'none';
+      specDiffBox.innerHTML = '';
+    }
   }
 
   function showDetail(id) {
@@ -1160,6 +1291,7 @@
     memoInput.value = savedData.memo !== undefined ? savedData.memo : (item.memo || '');
 
     updateQtyDifference(item.qty);
+    updateSpecDiffVisual();
 
     document.querySelectorAll('.list-item-btn').forEach(b => {
       if (b.getAttribute('data-id') === id) {
@@ -1170,7 +1302,7 @@
     });
   }
 
-  // ★ 核心儲存按鈕：使用 POST + no-cors 支援長篇規範與換行寫入 ★
+  // 儲存修改至雲端
   saveItemBtn.addEventListener('click', async () => {
     if (!currentSelectedId) return;
     const item = rawSpecifications.find(d => d.id === currentSelectedId);
@@ -1212,6 +1344,7 @@
       item.memo = updatedMemo;
 
       updateQtyDifference(item.qty);
+      updateSpecDiffVisual();
       renderSidebarList();
 
       saveStatus.textContent = '✅ 已成功儲存至雲端！所有電腦均同步最新內容';
@@ -1241,6 +1374,7 @@
     localStorage.setItem(STORAGE_KEY, JSON.stringify(userProjectData));
 
     updateQtyDifference(item.qty);
+    updateSpecDiffVisual();
     renderSidebarList();
 
     saveStatus.textContent = '● 已暫存於本地 (記得按右上角儲存同步至雲端)';
@@ -1305,6 +1439,9 @@
       });
 
       rawSpecifications.push(newItem);
+      originalSpecsMap[newItem.id] = newItem.spec;
+      localStorage.setItem(ORIG_SPEC_STORAGE_KEY, JSON.stringify(originalSpecsMap));
+
       initControls();
       showDetail(newItem.id);
 
