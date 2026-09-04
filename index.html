@@ -24,11 +24,7 @@
       --item-hover: #e0f2fe;
     }
 
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Microsoft JhengHei", sans-serif;
@@ -53,18 +49,8 @@
       gap: 16px;
     }
 
-    .header-left {
-      display: flex;
-      align-items: center;
-      gap: 24px;
-    }
-
-    header h1 {
-      font-size: 1.35rem;
-      margin: 0;
-      font-weight: 700;
-      letter-spacing: 0.5px;
-    }
+    .header-left { display: flex; align-items: center; gap: 24px; }
+    header h1 { font-size: 1.35rem; margin: 0; font-weight: 700; letter-spacing: 0.5px; }
 
     .nav-tabs {
       display: flex;
@@ -92,11 +78,7 @@
       box-shadow: 0 2px 5px rgba(0,0,0,0.15);
     }
 
-    .btn-group {
-      display: flex;
-      gap: 10px;
-      align-items: center;
-    }
+    .btn-group { display: flex; gap: 10px; align-items: center; }
 
     .btn {
       background-color: var(--primary);
@@ -118,12 +100,7 @@
     .btn-secondary { background-color: #334155; }
     .btn-secondary:hover { background-color: #1e293b; }
 
-    .tab-view {
-      display: flex;
-      flex: 1;
-      height: calc(100vh - 65px);
-      overflow: hidden;
-    }
+    .tab-view { display: flex; flex: 1; height: calc(100vh - 65px); overflow: hidden; }
 
     .sidebar {
       width: 380px;
@@ -145,12 +122,7 @@
       gap: 10px;
     }
 
-    .sidebar-filter label {
-      font-size: 0.85rem;
-      font-weight: 700;
-      color: var(--text-muted);
-    }
-
+    .sidebar-filter label { font-size: 0.85rem; font-weight: 700; color: var(--text-muted); }
     .sidebar-filter select, .sidebar-filter input {
       padding: 9px 12px;
       font-size: 0.95rem;
@@ -340,19 +312,8 @@
       margin-bottom: 18px;
     }
 
-    .timeline-control-left {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      flex-wrap: wrap;
-    }
-
-    .timeline-control-bar label {
-      font-weight: bold;
-      color: var(--primary);
-      font-size: 1.05rem;
-    }
-
+    .timeline-control-left { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+    .timeline-control-bar label { font-weight: bold; color: var(--primary); font-size: 1.05rem; }
     .timeline-control-bar input[type="date"] {
       padding: 8px 12px;
       border: 1px solid #90caf9;
@@ -372,13 +333,7 @@
       font-weight: bold;
     }
 
-    .gantt-table {
-      width: 100%;
-      border-collapse: separate;
-      border-spacing: 0;
-      font-size: 0.96rem;
-    }
-
+    .gantt-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 0.96rem; }
     .gantt-table th {
       background-color: #f1f5f9;
       color: #1e293b;
@@ -391,11 +346,7 @@
       z-index: 10;
     }
 
-    .gantt-table td {
-      padding: 10px 10px;
-      border-bottom: 1px solid var(--border);
-    }
-
+    .gantt-table td { padding: 10px 10px; border-bottom: 1px solid var(--border); }
     .gantt-table tr.group-row td {
       background-color: var(--group-bg) !important;
       color: var(--group-text) !important;
@@ -685,6 +636,8 @@
   const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbwz_DHYFNXzcbMJV5nrfxredcgUDIPyDRRWGL5P0jnpt6DuYjU9mdAEFjA1kuCYzo8MyQ/exec';
 
   let rawSpecifications = [];
+  const STORAGE_KEY = 'RMC_SPEC_MEMO_DATA_SPLIT_SHEET';
+  let userProjectData = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
   let currentSelectedId = null;
 
   const projectSchedule = [
@@ -961,7 +914,7 @@
     sidebarList.innerHTML = '<div class="loading-state">載入雲端試算表資料中...</div>';
     
     try {
-      const response = await fetch(`${GAS_API_URL}?t=${Date.now()}`); // 加 timestamp 避免快取舊資料
+      const response = await fetch(`${GAS_API_URL}?t=${Date.now()}`);
       const data = await response.json();
 
       if (Array.isArray(data)) {
@@ -1024,7 +977,12 @@
       btn.className = 'list-item-btn';
       btn.setAttribute('data-id', item.id);
 
-      const hasChange = (item.memo && item.memo.trim() !== '') || (item.actualQty && item.actualQty !== item.qty);
+      // 檢查本機與雲端是否有數量或備註異動
+      const localData = userProjectData[item.id];
+      const actQ = (localData && localData.actualQty !== undefined) ? localData.actualQty : item.actualQty;
+      const mem = (localData && localData.memo !== undefined) ? localData.memo : item.memo;
+
+      const hasChange = (mem && mem.trim() !== '') || (actQ !== undefined && actQ !== '' && String(actQ) !== String(item.qty));
       
       if (item.isCustom || hasChange) {
         btn.classList.add('is-custom');
@@ -1066,14 +1024,15 @@
     displayId.textContent = item.id;
     displayName.textContent = item.name;
     displayCategory.textContent = `所屬分類：${item.category}`;
-    displaySpec.value = item.spec || '';
 
     displayCustomBadge.style.display = item.isCustom ? 'inline-block' : 'none';
     contractQty.value = `${item.qty} ${item.unit}`;
 
-    // 載入雲端儲存的最新數量與備註
-    actualQty.value = item.actualQty !== undefined ? item.actualQty : item.qty;
-    memoInput.value = item.memo || '';
+    // 優先載入本地暫存，若無則載入雲端試算表最新值
+    const savedData = userProjectData[item.id] || {};
+    displaySpec.value = savedData.spec !== undefined ? savedData.spec : (item.spec || '');
+    actualQty.value = savedData.actualQty !== undefined ? savedData.actualQty : (item.actualQty !== undefined ? item.actualQty : item.qty);
+    memoInput.value = savedData.memo !== undefined ? savedData.memo : (item.memo || '');
 
     updateQtyDifference(item.qty);
 
@@ -1086,7 +1045,7 @@
     });
   }
 
-  // ★ 核心儲存按鈕：同步 規範內文 + 實際數量 + 專案備註 到 Google Sheets 雲端 ★
+  // ★ 核心儲存按鈕：同步 實際數量 + 備註 + 規範 到 Google Sheets 與 本地記憶 ★
   saveItemBtn.addEventListener('click', async () => {
     if (!currentSelectedId) return;
     const item = rawSpecifications.find(d => d.id === currentSelectedId);
@@ -1100,6 +1059,15 @@
     saveStatus.textContent = '⏳ 正在寫入 Google Sheets 後端...';
     saveStatus.style.color = '#0284c7';
 
+    // 1. 同步更新本機快取
+    userProjectData[currentSelectedId] = {
+      actualQty: updatedActualQty,
+      memo: updatedMemo,
+      spec: updatedSpec
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(userProjectData));
+
+    // 2. 同步寫入 Google Sheets
     try {
       const params = new URLSearchParams({
         action: 'updateItem',
@@ -1116,7 +1084,6 @@
         throw new Error(resData.error || '後端更新失敗');
       }
 
-      // 更新本地快取資料
       item.spec = updatedSpec;
       item.actualQty = updatedActualQty;
       item.memo = updatedMemo;
@@ -1131,17 +1098,37 @@
         saveStatus.textContent = '';
       }, 3000);
     } catch (err) {
-      saveStatus.textContent = `❌ 儲存失敗：${err.message}`;
+      saveStatus.textContent = `❌ 雲端儲存失敗：${err.message} (已先儲存於本機)`;
       saveStatus.style.color = '#ef4444';
     } finally {
       saveItemBtn.disabled = false;
     }
   });
 
+  // 輸入時即時更新本地記憶與差異標籤
+  function autoSaveLocalMemo() {
+    if (!currentSelectedId) return;
+    const item = rawSpecifications.find(d => d.id === currentSelectedId);
+    if (!item) return;
+
+    userProjectData[currentSelectedId] = {
+      actualQty: actualQty.value.trim(),
+      memo: memoInput.value.trim(),
+      spec: displaySpec.value.trim()
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(userProjectData));
+
+    updateQtyDifference(item.qty);
+    renderSidebarList();
+
+    saveStatus.textContent = '● 已暫存於本地 (記得按右上角儲存同步至雲端)';
+    saveStatus.style.color = '#d97706';
+  }
+
   function updateQtyDifference(origQty) {
     diffTagContainer.innerHTML = '';
     const currentActual = actualQty.value.trim();
-    if (currentActual && currentActual !== origQty) {
+    if (currentActual !== '' && String(currentActual) !== String(origQty)) {
       const tag = document.createElement('span');
       tag.className = 'diff-tag';
       tag.textContent = `數量異動：原合約 ${origQty} ➔ 實際 ${currentActual}`;
@@ -1256,6 +1243,11 @@ ${currentSpecVal}`;
     downloadAnchor.click();
     downloadAnchor.remove();
   });
+
+  // 事件監聽
+  actualQty.addEventListener('input', autoSaveLocalMemo);
+  memoInput.addEventListener('input', autoSaveLocalMemo);
+  displaySpec.addEventListener('input', autoSaveLocalMemo);
 
   refreshBtn.addEventListener('click', fetchSheetData);
   categorySelect.addEventListener('change', renderSidebarList);
