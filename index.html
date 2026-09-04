@@ -113,8 +113,8 @@
     .btn:hover { background-color: var(--primary-hover); }
     .btn-add { background-color: #16a34a; }
     .btn-add:hover { background-color: #15803d; }
-    .btn-save-spec { background-color: #0284c7; }
-    .btn-save-spec:hover { background-color: #0369a1; }
+    .btn-save-cloud { background-color: #0284c7; }
+    .btn-save-cloud:hover { background-color: #0369a1; }
     .btn-secondary { background-color: #334155; }
     .btn-secondary:hover { background-color: #1e293b; }
 
@@ -521,7 +521,7 @@
 
   <div class="btn-group" id="specActions">
     <button class="btn btn-add" id="openAddModalBtn">+ 新增工程設備</button>
-    <button class="btn btn-secondary" id="refreshBtn">重新整理</button>
+    <button class="btn btn-secondary" id="refreshBtn">🔄 重新整理(載入最新)</button>
     <button class="btn btn-secondary" id="exportBtn">匯出備註</button>
     <button class="btn btn-secondary" id="importBtn">匯入備註</button>
     <input type="file" id="fileInput" accept=".json" style="display: none;">
@@ -564,13 +564,17 @@
             </h2>
             <div style="margin-top: 6px; font-size: 0.9rem; color: #64748b;" id="displayCategory"></div>
           </div>
-          <button class="btn" id="copyBtn">複製工項與完整規範</button>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <button class="btn btn-save-cloud" id="saveItemBtn">💾 儲存修改至雲端資料庫</button>
+            <button class="btn btn-secondary" id="copyBtn">複製完整規範</button>
+          </div>
         </div>
 
+        <!-- 專案調整與人工備註 -->
         <div class="memo-section">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-            <span style="font-weight: 700; color: #92400e; font-size: 0.98rem;">專案調整與人工備註 (本地自動儲存)</span>
-            <span id="saveStatus" style="font-size: 0.85rem; color: #16a34a; font-weight: 600;"></span>
+            <span style="font-weight: 700; color: #92400e; font-size: 0.98rem;">專案調整與人工備註 (跨電腦同步)</span>
+            <span id="saveStatus" style="font-size: 0.85rem; font-weight: 600;"></span>
           </div>
           <div class="memo-grid">
             <div class="form-group">
@@ -591,12 +595,8 @@
 
         <div class="spec-header-bar">
           <label style="font-weight: 700; font-size: 0.95rem; color: #334155;">
-            完整技術需求規範 (可直接修改)：
+            完整技術需求規範 (可直接修改，點右上角按鈕同步至雲端)：
           </label>
-          <div style="display: flex; align-items: center; gap: 10px;">
-            <span id="specUpdateStatus" style="font-size: 0.85rem; font-weight: 600;"></span>
-            <button class="btn btn-save-spec" id="saveSpecBtn">💾 儲存技術規範至雲端</button>
-          </div>
         </div>
         <textarea class="spec-textarea" id="displaySpec" placeholder="輸入或修改此設備的技術規範..."></textarea>
       </div>
@@ -685,8 +685,6 @@
   const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbwz_DHYFNXzcbMJV5nrfxredcgUDIPyDRRWGL5P0jnpt6DuYjU9mdAEFjA1kuCYzo8MyQ/exec';
 
   let rawSpecifications = [];
-  const STORAGE_KEY = 'RMC_SPEC_MEMO_DATA_SPLIT_SHEET';
-  let userProjectData = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
   let currentSelectedId = null;
 
   const projectSchedule = [
@@ -790,8 +788,7 @@
   const diffTagContainer = document.getElementById('diffTagContainer');
   const saveStatus = document.getElementById('saveStatus');
   const copyBtn = document.getElementById('copyBtn');
-  const saveSpecBtn = document.getElementById('saveSpecBtn');
-  const specUpdateStatus = document.getElementById('specUpdateStatus');
+  const saveItemBtn = document.getElementById('saveItemBtn');
 
   const refreshBtn = document.getElementById('refreshBtn');
   const exportBtn = document.getElementById('exportBtn');
@@ -958,17 +955,18 @@
     if (e.target.value) renderTimeline(e.target.value);
   });
 
+  // 從 Google Sheets 抓取最新設備資料
   async function fetchSheetData() {
     connStatus.textContent = '資料來源：Google Sheets 讀取中...';
     sidebarList.innerHTML = '<div class="loading-state">載入雲端試算表資料中...</div>';
     
     try {
-      const response = await fetch(GAS_API_URL);
+      const response = await fetch(`${GAS_API_URL}?t=${Date.now()}`); // 加 timestamp 避免快取舊資料
       const data = await response.json();
 
       if (Array.isArray(data)) {
         rawSpecifications = data;
-        connStatus.textContent = `連線成功！共載入 ${rawSpecifications.length} 筆設備規範資料`;
+        connStatus.textContent = `連線成功！共載入 ${rawSpecifications.length} 筆最新設備規範資料`;
         initControls();
       } else {
         throw new Error(data.error || '資料格式錯誤');
@@ -993,8 +991,12 @@
     if (currentCat) categorySelect.value = currentCat;
     renderSidebarList();
 
-    if (rawSpecifications.length > 0 && !currentSelectedId) {
-      showDetail(rawSpecifications[0].id);
+    if (rawSpecifications.length > 0) {
+      if (currentSelectedId) {
+        showDetail(currentSelectedId);
+      } else {
+        showDetail(rawSpecifications[0].id);
+      }
     }
   }
 
@@ -1022,10 +1024,9 @@
       btn.className = 'list-item-btn';
       btn.setAttribute('data-id', item.id);
 
-      const memoInfo = userProjectData[item.id];
-      const hasMemo = memoInfo && (memoInfo.memo || (memoInfo.actualQty && memoInfo.actualQty !== item.qty));
+      const hasChange = (item.memo && item.memo.trim() !== '') || (item.actualQty && item.actualQty !== item.qty);
       
-      if (item.isCustom || hasMemo) {
+      if (item.isCustom || hasChange) {
         btn.classList.add('is-custom');
       }
 
@@ -1038,7 +1039,7 @@
           <span class="item-id">[${item.id}]</span>
           <span>${item.name}</span>
         </div>
-        <span style="font-size: 0.85rem; opacity: 0.85;">${(item.isCustom || hasMemo) ? '★' : ''}</span>
+        <span style="font-size: 0.85rem; opacity: 0.85;">${(item.isCustom || hasChange) ? '★' : ''}</span>
       `;
 
       btn.addEventListener('click', () => {
@@ -1070,9 +1071,9 @@
     displayCustomBadge.style.display = item.isCustom ? 'inline-block' : 'none';
     contractQty.value = `${item.qty} ${item.unit}`;
 
-    const savedData = userProjectData[item.id] || {};
-    actualQty.value = savedData.actualQty !== undefined ? savedData.actualQty : item.qty;
-    memoInput.value = savedData.memo || '';
+    // 載入雲端儲存的最新數量與備註
+    actualQty.value = item.actualQty !== undefined ? item.actualQty : item.qty;
+    memoInput.value = item.memo || '';
 
     updateQtyDifference(item.qty);
 
@@ -1085,22 +1086,27 @@
     });
   }
 
-  saveSpecBtn.addEventListener('click', async () => {
+  // ★ 核心儲存按鈕：同步 規範內文 + 實際數量 + 專案備註 到 Google Sheets 雲端 ★
+  saveItemBtn.addEventListener('click', async () => {
     if (!currentSelectedId) return;
-
     const item = rawSpecifications.find(d => d.id === currentSelectedId);
     if (!item) return;
 
     const updatedSpec = displaySpec.value.trim();
-    saveSpecBtn.disabled = true;
-    specUpdateStatus.textContent = '⏳ 正在儲存至 Google 試算表...';
-    specUpdateStatus.style.color = '#0284c7';
+    const updatedActualQty = actualQty.value.trim();
+    const updatedMemo = memoInput.value.trim();
+
+    saveItemBtn.disabled = true;
+    saveStatus.textContent = '⏳ 正在寫入 Google Sheets 後端...';
+    saveStatus.style.color = '#0284c7';
 
     try {
       const params = new URLSearchParams({
-        action: 'updateSpec',
+        action: 'updateItem',
         id: item.id,
-        spec: updatedSpec
+        spec: updatedSpec,
+        actualQty: updatedActualQty,
+        memo: updatedMemo
       });
 
       const response = await fetch(`${GAS_API_URL}?${params.toString()}`);
@@ -1110,18 +1116,25 @@
         throw new Error(resData.error || '後端更新失敗');
       }
 
+      // 更新本地快取資料
       item.spec = updatedSpec;
-      specUpdateStatus.textContent = '✅ 技術規範已同步至 Google 試算表！';
-      specUpdateStatus.style.color = '#16a34a';
+      item.actualQty = updatedActualQty;
+      item.memo = updatedMemo;
+
+      updateQtyDifference(item.qty);
+      renderSidebarList();
+
+      saveStatus.textContent = '✅ 已成功儲存至雲端！所有電腦均同步最新內容';
+      saveStatus.style.color = '#16a34a';
 
       setTimeout(() => {
-        specUpdateStatus.textContent = '';
-      }, 2500);
+        saveStatus.textContent = '';
+      }, 3000);
     } catch (err) {
-      specUpdateStatus.textContent = `❌ 儲存失敗：${err.message}`;
-      specUpdateStatus.style.color = '#ef4444';
+      saveStatus.textContent = `❌ 儲存失敗：${err.message}`;
+      saveStatus.style.color = '#ef4444';
     } finally {
-      saveSpecBtn.disabled = false;
+      saveItemBtn.disabled = false;
     }
   });
 
@@ -1136,24 +1149,7 @@
     }
   }
 
-  function autoSaveMemo() {
-    if (!currentSelectedId) return;
-    const item = rawSpecifications.find(d => d.id === currentSelectedId);
-    if (!item) return;
-
-    userProjectData[currentSelectedId] = {
-      actualQty: actualQty.value.trim(),
-      memo: memoInput.value.trim()
-    };
-
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(userProjectData));
-    updateQtyDifference(item.qty);
-
-    saveStatus.textContent = '● 備註已儲存';
-    setTimeout(() => { saveStatus.textContent = ''; }, 1500);
-    renderSidebarList();
-  }
-
+  // 新增設備
   saveNewItemBtn.addEventListener('click', async () => {
     const idVal = newId.value.trim();
     const catVal = newCategory.value.trim() || '自訂設備';
@@ -1174,7 +1170,9 @@
       qty: qtyVal,
       unit: unitVal,
       spec: specVal,
-      isCustom: true
+      isCustom: true,
+      actualQty: qtyVal,
+      memo: ''
     };
 
     saveNewItemBtn.textContent = '正在寫入後端...';
@@ -1248,41 +1246,22 @@ ${currentSpecVal}`;
     });
   });
 
+  // 匯出 / 匯入備份功能
   exportBtn.addEventListener('click', () => {
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(userProjectData, null, 2));
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(rawSpecifications, null, 2));
     const downloadAnchor = document.createElement('a');
     downloadAnchor.setAttribute("href", dataStr);
-    downloadAnchor.setAttribute("download", `預拌工程專案備註_${new Date().toISOString().slice(0,10)}.json`);
+    downloadAnchor.setAttribute("download", `台泥桃園3號機_設備規範備份_${new Date().toISOString().slice(0,10)}.json`);
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     downloadAnchor.remove();
   });
 
-  importBtn.addEventListener('click', () => fileInput.click());
-  fileInput.addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = function(evt) {
-      try {
-        userProjectData = JSON.parse(evt.target.result);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(userProjectData));
-        alert('備註檔案匯入成功！');
-        renderSidebarList();
-        if (currentSelectedId) showDetail(currentSelectedId);
-      } catch(err) {
-        alert('檔案格式錯誤，請確認為有效的 JSON 檔案。');
-      }
-    };
-    reader.readAsText(file);
-  });
-
   refreshBtn.addEventListener('click', fetchSheetData);
-  actualQty.addEventListener('input', autoSaveMemo);
-  memoInput.addEventListener('input', autoSaveMemo);
   categorySelect.addEventListener('change', renderSidebarList);
   keywordInput.addEventListener('input', renderSidebarList);
 
+  // 系統啟動
   fetchSheetData();
   loadTimelineFromSheet();
 </script>
