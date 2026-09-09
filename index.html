@@ -285,35 +285,37 @@
       border-bottom: 2px solid #e2e8f0;
     }
 
+    /* 規範比對呈現區 (精準字級比對) */
     .spec-diff-box {
-      background-color: #f8fafc;
+      background-color: #ffffff;
       border: 1px solid #cbd5e1;
       border-left: 6px solid #16a34a;
       padding: 16px 20px;
       border-radius: 8px;
       font-size: 1rem;
-      line-height: 1.9;
+      line-height: 2.0;
       margin-bottom: 18px;
       white-space: pre-wrap;
       word-break: break-word;
       color: #334155;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.03);
     }
 
     .diff-ins {
-      background-color: #bbf7d0;
-      color: #14532d;
+      background-color: #bbf7d0 !important;
+      color: #14532d !important;
       font-weight: bold;
-      padding: 2px 5px;
-      border-radius: 4px;
-      border-bottom: 2px solid #22c55e;
+      padding: 1px 4px;
+      border-radius: 3px;
+      border-bottom: 2px solid #16a34a;
     }
 
     .diff-del {
-      background-color: #fee2e2;
-      color: #dc2626;
-      text-decoration: line-through 2px #dc2626;
-      padding: 2px 5px;
-      border-radius: 4px;
+      background-color: #fee2e2 !important;
+      color: #dc2626 !important;
+      text-decoration: line-through 2px #dc2626 !important;
+      padding: 1px 4px;
+      border-radius: 3px;
       font-weight: bold;
     }
 
@@ -388,6 +390,7 @@
       box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
     }
 
+    /* 甘特圖相關樣式 */
     .gantt-container {
       flex: 1;
       overflow-y: auto;
@@ -671,7 +674,7 @@
           </div>
         </div>
 
-        <!-- 區塊 1: 規範比對呈現區 -->
+        <!-- 區塊 1: 規範差異比對檢視區 -->
         <div class="section-title">
           <span>🔍 規範差異比對檢視區 (原合約 vs 本次修訂)</span>
         </div>
@@ -682,7 +685,7 @@
           <span>✏️ 技術規範內容編輯區 (可自由排版/變色/紅色刪除線)</span>
         </div>
 
-        <!-- 富文字工具列 (已加入「取消紅色刪除線」按鈕) -->
+        <!-- 富文字工具列 -->
         <div class="editor-toolbar">
           <button class="tool-btn" type="button" onclick="formatDoc('bold')" title="粗體 (Ctrl+B)"><b>B</b> 粗體</button>
           <button class="tool-btn" type="button" onclick="formatDoc('italic')" title="斜體 (Ctrl+I)"><i>I</i> 斜體</button>
@@ -991,14 +994,12 @@
     specActions.style.display = 'none';
   });
 
-  // 富文字編輯命令
   function formatDoc(cmd, val = null) {
     document.execCommand(cmd, false, val);
     displaySpec.focus();
     autoSaveLocalMemo();
   }
 
-  // 套用紅色刪除線
   function applyRedStrike() {
     const selection = window.getSelection();
     if (!selection.rangeCount || selection.isCollapsed) {
@@ -1018,7 +1019,6 @@
     autoSaveLocalMemo();
   }
 
-  // ★ 取消紅色刪除線 ★
   function removeRedStrike() {
     const selection = window.getSelection();
     if (!selection.rangeCount || selection.isCollapsed) {
@@ -1026,26 +1026,20 @@
       return;
     }
 
-    // 取得選取範圍內的節點
     const range = selection.getRangeAt(0);
     const container = range.commonAncestorContainer;
 
-    // 檢查選取區是否在 .diff-del 或 strike/s 標籤內
     let targetElement = container.nodeType === 1 ? container : container.parentElement;
     let delElement = targetElement.closest('.diff-del, s, strike, [style*="line-through"]');
 
     if (delElement) {
-      // 若正好選中整個刪除線元素或其內部，直接拆除外框
       const parent = delElement.parentNode;
       while (delElement.firstChild) {
         parent.insertBefore(delElement.firstChild, delElement);
       }
       parent.removeChild(delElement);
     } else {
-      // 一般性解除瀏覽器刪除線
       document.execCommand('strikeThrough', false, null);
-      
-      // 清除可能殘留的 diff-del 樣式
       const selectedText = selection.toString();
       const textNode = document.createTextNode(selectedText);
       range.deleteContents();
@@ -1239,6 +1233,7 @@
     renderTimeline();
   });
 
+  // 讀取設備資料
   async function fetchSheetData() {
     connStatus.textContent = '資料來源：Google Sheets 讀取中...';
     sidebarList.innerHTML = '<div class="loading-state">載入雲端試算表資料中...</div>';
@@ -1294,8 +1289,15 @@
   }
 
   function getCleanText(html) {
+    if (!html) return '';
     const tmp = document.createElement('div');
-    tmp.innerHTML = html || '';
+    // 將 br 與 block 轉為換行符號
+    let formatted = html.replace(/<br\s*[\/]?>/gi, '\n')
+                        .replace(/<\/div>/gi, '\n')
+                        .replace(/<div>/gi, '')
+                        .replace(/<\/p>/gi, '\n')
+                        .replace(/<p>/gi, '');
+    tmp.innerHTML = formatted;
     return tmp.textContent || tmp.innerText || '';
   }
 
@@ -1366,6 +1368,45 @@
     });
   }
 
+  // ★ 核心升級：精準字元級 (Char/Word LCS) 比對演算法，徹底消除全行誤判與多餘紅綠底 ★
+  function tokenize(str) {
+    // 依中文字、英文字詞、符號、換行分詞
+    return str.match(/[\u4e00-\u9fa5]|[a-zA-Z0-9_]+|[^\s\w\u4e00-\u9fa5]|\n|\s+/g) || [];
+  }
+
+  function computeLCSDiff(arr1, arr2) {
+    const N = arr1.length;
+    const M = arr2.length;
+    const dp = Array.from({ length: N + 1 }, () => new Uint16Array(M + 1));
+
+    for (let i = 0; i < N; i++) {
+      for (let j = 0; j < M; j++) {
+        if (arr1[i] === arr2[j]) {
+          dp[i + 1][j + 1] = dp[i][j] + 1;
+        } else {
+          dp[i + 1][j + 1] = Math.max(dp[i + 1][j], dp[i][j + 1]);
+        }
+      }
+    }
+
+    let i = N, j = M;
+    const result = [];
+    while (i > 0 || j > 0) {
+      if (i > 0 && j > 0 && arr1[i - 1] === arr2[j - 1]) {
+        result.unshift({ type: 'same', val: arr1[i - 1] });
+        i--;
+        j--;
+      } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
+        result.unshift({ type: 'ins', val: arr2[j - 1] });
+        j--;
+      } else if (i > 0 && (j === 0 || dp[i][j - 1] < dp[i - 1][j])) {
+        result.unshift({ type: 'del', val: arr1[i - 1] });
+        i--;
+      }
+    }
+    return result;
+  }
+
   function generateDiffHTML(originalText, newText) {
     const origClean = getCleanText(originalText);
     const newClean = getCleanText(newText);
@@ -1375,25 +1416,24 @@
       return '<span style="color: #16a34a; font-weight: bold;">✔ 目前內容與原始合約規範完全一致，無修訂差異。</span>';
     }
 
-    const origLines = origClean.split('\n');
-    const newLines = newClean.split('\n');
+    const t1 = tokenize(origClean);
+    const t2 = tokenize(newClean);
+    const diffTokens = computeLCSDiff(t1, t2);
+
     let html = '';
+    let currentSpan = null;
 
-    let maxL = Math.max(origLines.length, newLines.length);
-    for (let i = 0; i < maxL; i++) {
-      let oLine = origLines[i];
-      let nLine = newLines[i];
-
-      if (oLine === undefined && nLine !== undefined) {
-        html += `<span class="diff-ins">+ ${escapeHtml(nLine)}</span>\n`;
-      } else if (nLine === undefined && oLine !== undefined) {
-        html += `<span class="diff-del">- ${escapeHtml(oLine)}</span>\n`;
-      } else if (oLine !== nLine) {
-        html += `<span class="diff-del">- ${escapeHtml(oLine)}</span>\n<span class="diff-ins">+ ${escapeHtml(nLine)}</span>\n`;
-      } else {
-        html += `${escapeHtml(nLine)}\n`;
+    diffTokens.forEach(tok => {
+      const escaped = escapeHtml(tok.val);
+      if (tok.type === 'same') {
+        html += escaped;
+      } else if (tok.type === 'ins') {
+        html += `<span class="diff-ins">${escaped}</span>`;
+      } else if (tok.type === 'del') {
+        html += `<span class="diff-del">${escaped}</span>`;
       }
-    }
+    });
+
     return html;
   }
 
@@ -1457,6 +1497,7 @@
     });
   }
 
+  // 儲存修改至雲端
   saveItemBtn.addEventListener('click', async () => {
     if (!currentSelectedId) return;
     const item = rawSpecifications.find(d => d.id === currentSelectedId);
