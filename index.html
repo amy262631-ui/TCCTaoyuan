@@ -273,7 +273,6 @@
       font-weight: 600;
     }
 
-    /* 區塊標題樣式 */
     .section-title {
       font-size: 1.02rem;
       font-weight: 750;
@@ -286,7 +285,6 @@
       border-bottom: 2px solid #e2e8f0;
     }
 
-    /* 規範比對呈現區 (紅底刪除線、綠底新增) */
     .spec-diff-box {
       background-color: #f8fafc;
       border: 1px solid #cbd5e1;
@@ -319,7 +317,6 @@
       font-weight: bold;
     }
 
-    /* 富文字編輯器工具列 */
     .editor-toolbar {
       display: flex;
       align-items: center;
@@ -351,7 +348,12 @@
 
     .tool-btn.btn-strike {
       color: #dc2626;
-      text-decoration: line-through;
+      border-color: #fca5a5;
+    }
+
+    .tool-btn.btn-unstrike {
+      color: #475569;
+      background: #f8fafc;
     }
 
     .color-select {
@@ -364,7 +366,6 @@
       outline: none;
     }
 
-    /* 富文字可編輯區域 */
     .rich-editor-content {
       width: 100%;
       background-color: #ffffff;
@@ -387,7 +388,6 @@
       box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
     }
 
-    /* 甘特圖相關樣式 */
     .gantt-container {
       flex: 1;
       overflow-y: auto;
@@ -682,12 +682,16 @@
           <span>✏️ 技術規範內容編輯區 (可自由排版/變色/紅色刪除線)</span>
         </div>
 
-        <!-- 富文字工具列 -->
+        <!-- 富文字工具列 (已加入「取消紅色刪除線」按鈕) -->
         <div class="editor-toolbar">
           <button class="tool-btn" type="button" onclick="formatDoc('bold')" title="粗體 (Ctrl+B)"><b>B</b> 粗體</button>
           <button class="tool-btn" type="button" onclick="formatDoc('italic')" title="斜體 (Ctrl+I)"><i>I</i> 斜體</button>
           <button class="tool-btn" type="button" onclick="formatDoc('underline')" title="底線 (Ctrl+U)"><u>U</u> 底線</button>
+          
+          <span style="border-left: 1px solid #cbd5e1; height: 18px; margin: 0 4px;"></span>
+          
           <button class="tool-btn btn-strike" type="button" onclick="applyRedStrike()" title="加上紅色刪除線"><s>S</s> 紅色刪除線</button>
+          <button class="tool-btn btn-unstrike" type="button" onclick="removeRedStrike()" title="取消紅色刪除線">✕ 取消刪除線</button>
           
           <span style="border-left: 1px solid #cbd5e1; height: 18px; margin: 0 4px;"></span>
 
@@ -702,7 +706,7 @@
           </select>
 
           <button class="tool-btn" type="button" onclick="formatDoc('hiliteColor', '#fef08a')" title="螢光筆標記">🖊️ 螢光筆</button>
-          <button class="tool-btn" type="button" onclick="formatDoc('removeFormat')" title="清除格式">🧹 清除格式</button>
+          <button class="tool-btn" type="button" onclick="formatDoc('removeFormat')" title="清除選取格式">🧹 清除格式</button>
         </div>
 
         <!-- 可直接編輯的富文字主體 -->
@@ -987,7 +991,7 @@
     specActions.style.display = 'none';
   });
 
-  // 富文字編輯器命令
+  // 富文字編輯命令
   function formatDoc(cmd, val = null) {
     document.execCommand(cmd, false, val);
     displaySpec.focus();
@@ -1011,6 +1015,45 @@
     range.insertNode(span);
 
     selection.removeAllRanges();
+    autoSaveLocalMemo();
+  }
+
+  // ★ 取消紅色刪除線 ★
+  function removeRedStrike() {
+    const selection = window.getSelection();
+    if (!selection.rangeCount || selection.isCollapsed) {
+      alert('請先反白選取要取消刪除線的文字！');
+      return;
+    }
+
+    // 取得選取範圍內的節點
+    const range = selection.getRangeAt(0);
+    const container = range.commonAncestorContainer;
+
+    // 檢查選取區是否在 .diff-del 或 strike/s 標籤內
+    let targetElement = container.nodeType === 1 ? container : container.parentElement;
+    let delElement = targetElement.closest('.diff-del, s, strike, [style*="line-through"]');
+
+    if (delElement) {
+      // 若正好選中整個刪除線元素或其內部，直接拆除外框
+      const parent = delElement.parentNode;
+      while (delElement.firstChild) {
+        parent.insertBefore(delElement.firstChild, delElement);
+      }
+      parent.removeChild(delElement);
+    } else {
+      // 一般性解除瀏覽器刪除線
+      document.execCommand('strikeThrough', false, null);
+      
+      // 清除可能殘留的 diff-del 樣式
+      const selectedText = selection.toString();
+      const textNode = document.createTextNode(selectedText);
+      range.deleteContents();
+      range.insertNode(textNode);
+    }
+
+    selection.removeAllRanges();
+    displaySpec.focus();
     autoSaveLocalMemo();
   }
 
@@ -1196,7 +1239,6 @@
     renderTimeline();
   });
 
-  // 讀取設備資料
   async function fetchSheetData() {
     connStatus.textContent = '資料來源：Google Sheets 讀取中...';
     sidebarList.innerHTML = '<div class="loading-state">載入雲端試算表資料中...</div>';
@@ -1267,7 +1309,6 @@
 
     const origSpec = originalSpecsMap[item.id] || '';
     
-    // 比對純文字差異
     const isSpecModified = getCleanText(curSpec).trim() !== getCleanText(origSpec).trim() || curSpec.includes('diff-del');
     const isQtyModified = actQ !== undefined && actQ !== '' && String(actQ) !== String(item.qty);
     const isMemoAdded = mem && mem.trim() !== '';
@@ -1325,7 +1366,6 @@
     });
   }
 
-  // 規範差異比對產生器
   function generateDiffHTML(originalText, newText) {
     const origClean = getCleanText(originalText);
     const newClean = getCleanText(newText);
@@ -1417,7 +1457,6 @@
     });
   }
 
-  // 儲存修改至雲端
   saveItemBtn.addEventListener('click', async () => {
     if (!currentSelectedId) return;
     const item = rawSpecifications.find(d => d.id === currentSelectedId);
