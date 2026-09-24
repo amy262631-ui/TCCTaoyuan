@@ -99,6 +99,8 @@
     .btn-save-cloud:hover { background-color: #0369a1; }
     .btn-secondary { background-color: #334155; }
     .btn-secondary:hover { background-color: #1e293b; }
+    .btn-print { background-color: #7c3aed; }
+    .btn-print:hover { background-color: #6d28d9; }
 
     .tab-view { display: flex; flex: 1; height: calc(100vh - 65px); overflow: hidden; }
 
@@ -582,6 +584,99 @@
       font-size: 1.05rem;
       padding: 40px 0;
     }
+
+    /* ===== 列印 / 轉 PDF ===== */
+    .print-header { display: none; }
+
+    @media print {
+      * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+
+      html, body {
+        height: auto !important;
+        overflow: visible !important;
+        background: #ffffff !important;
+        display: block !important;
+      }
+
+      /* 隱藏操作介面 */
+      header,
+      .sidebar,
+      .timeline-control-bar,
+      .gantt-filter-bar,
+      .editor-toolbar,
+      .modal-overlay,
+      .no-print,
+      #emptyState {
+        display: none !important;
+      }
+
+      .tab-view {
+        height: auto !important;
+        overflow: visible !important;
+      }
+
+      .gantt-container, .content-area, #ganttTableWrap {
+        overflow: visible !important;
+        height: auto !important;
+        padding: 0 !important;
+        background: #ffffff !important;
+      }
+
+      /* 列印標題區 */
+      .print-header {
+        display: block !important;
+        border-bottom: 2px solid #1e3a8a;
+        padding-bottom: 6px;
+        margin-bottom: 8px;
+      }
+      .print-header .ph-title {
+        font-size: 15px;
+        font-weight: 700;
+        color: #1e3a8a;
+        margin-bottom: 4px;
+      }
+      .print-header .ph-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px 18px;
+        font-size: 10.5px;
+        color: #334155;
+      }
+      .print-header .ph-meta b { color: #0f172a; }
+
+      /* 甘特表格 */
+      .gantt-table { font-size: 10px; }
+      .gantt-table thead { display: table-header-group; }
+      .gantt-table th {
+        position: static !important;
+        font-size: 10px;
+        padding: 5px 4px;
+      }
+      .gantt-table td { padding: 3px 4px; }
+      .gantt-table tr { page-break-inside: avoid; break-inside: avoid; }
+      .gantt-table tr.group-row td { font-size: 10.5px; }
+      .gantt-table tr.task-row:hover td { background-color: inherit !important; }
+      .date-col { font-size: 10px; letter-spacing: 0; }
+      .tag-budget { font-size: 9px; padding: 1px 5px; }
+      .gantt-cell { width: 230px; padding: 3px 6px; }
+      .gantt-track { height: 11px; }
+
+      /* 規範頁 */
+      .card { box-shadow: none; border: none; padding: 0; }
+      .rich-editor-content {
+        min-height: 0;
+        overflow: visible;
+        border-radius: 8px;
+        font-size: 12px;
+        line-height: 1.8;
+      }
+      .spec-diff-box { font-size: 12px; line-height: 1.8; }
+      .memo-section, .spec-diff-box, .section-title { break-inside: avoid; }
+      .form-group textarea { resize: none; }
+    }
   </style>
 </head>
 <body>
@@ -607,6 +702,9 @@
     <input type="file" id="fileInput" accept=".json" style="display: none;">
   </div>
 </header>
+
+<!-- 列印時才顯示的標題資訊區 -->
+<div class="print-header" id="printHeader"></div>
 
 <!-- 分頁 1: 設備需求規範 -->
 <div class="tab-view" id="viewSpec">
@@ -645,9 +743,10 @@
             </h2>
             <div style="margin-top: 6px; font-size: 0.9rem; color: #64748b;" id="displayCategory"></div>
           </div>
-          <div style="display: flex; gap: 8px; align-items: center;">
+          <div class="no-print" style="display: flex; gap: 8px; align-items: center;">
             <button class="btn btn-save-cloud" id="saveItemBtn">💾 儲存修改至雲端資料庫</button>
             <button class="btn btn-secondary" id="copyBtn">複製完整規範</button>
+            <button class="btn btn-print" id="printSpecBtn">🖨️ 列印 / 轉 PDF</button>
           </div>
         </div>
 
@@ -655,7 +754,7 @@
         <div class="memo-section">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
             <span style="font-weight: 700; color: #92400e; font-size: 0.98rem;">專案調整與人工備註 (跨電腦同步)</span>
-            <span id="saveStatus" style="font-size: 0.85rem; font-weight: 600;"></span>
+            <span id="saveStatus" class="no-print" style="font-size: 0.85rem; font-weight: 600;"></span>
           </div>
           <div class="memo-grid">
             <div class="form-group">
@@ -752,10 +851,13 @@
         </div>
       </div>
 
-      <button class="btn btn-secondary" id="resetGanttSortBtn" style="padding: 5px 12px; font-size: 0.85rem;">🔄 還原預設排序</button>
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <button class="btn btn-secondary" id="resetGanttSortBtn" style="padding: 5px 12px; font-size: 0.85rem;">🔄 還原預設排序</button>
+        <button class="btn btn-print" id="printGanttBtn" style="padding: 5px 14px; font-size: 0.9rem;">🖨️ 列印 / 轉 PDF</button>
+      </div>
     </div>
 
-    <div style="overflow-x: auto; flex: 1;">
+    <div id="ganttTableWrap" style="overflow-x: auto; flex: 1;">
       <table class="gantt-table">
         <thead>
           <tr>
@@ -978,6 +1080,10 @@
   const thSortStart = document.getElementById('thSortStart');
   const thSortEnd = document.getElementById('thSortEnd');
 
+  const printGanttBtn = document.getElementById('printGanttBtn');
+  const printSpecBtn = document.getElementById('printSpecBtn');
+  const printHeader = document.getElementById('printHeader');
+
   tabBtnSpec.addEventListener('click', () => {
     tabBtnSpec.classList.add('active');
     tabBtnGantt.classList.remove('active');
@@ -1169,6 +1275,91 @@
   thSortEnd.addEventListener('click', () => {
     ganttSortSelect.value = (ganttSortSelect.value === 'endAsc') ? 'endDesc' : 'endAsc';
     renderTimeline();
+  });
+
+  // ===== 列印 / 轉 PDF 功能 =====
+  const printPageStyle = document.createElement('style');
+  printPageStyle.id = 'printPageStyle';
+  document.head.appendChild(printPageStyle);
+  const ORIGINAL_DOC_TITLE = document.title;
+
+  function isGanttTabActive() {
+    return viewGantt.style.display !== 'none';
+  }
+
+  function nowStamp() {
+    const n = new Date();
+    return `${formatDate(n)} ${String(n.getHours()).padStart(2, '0')}:${String(n.getMinutes()).padStart(2, '0')}`;
+  }
+
+  function fileDateStamp() {
+    return formatDate(new Date()).replace(/\//g, '-');
+  }
+
+  function preparePrint() {
+    if (isGanttTabActive()) {
+      // 甘特圖：A4 橫式
+      printPageStyle.textContent = '@page { size: A4 landscape; margin: 8mm 10mm; }';
+
+      const startStr = startDateInput.value;
+      const startDate = startStr ? new Date(startStr) : null;
+      const endStr = startDate ? formatDate(addDays(startDate, TOTAL_PROJECT_DAYS)) : '-';
+      const sortText = ganttSortSelect.options[ganttSortSelect.selectedIndex].text;
+      const keyword = ganttSearchInput.value.trim();
+      const taskCount = timelineTbody.querySelectorAll('tr.task-row').length;
+
+      printHeader.innerHTML = `
+        <div class="ph-title">台泥桃園-#3 拌合系統更新總包工程 — 專案里程甘特圖</div>
+        <div class="ph-meta">
+          <span>開工日：<b>${startDate ? formatDate(startDate) : '-'}</b></span>
+          <span>全案最晚完工日：<b>${endStr}</b>（總期 ${TOTAL_PROJECT_DAYS} 天）</span>
+          <span>排序方式：<b>${escapeHtml(sortText)}</b></span>
+          <span>關鍵字過濾：<b>${keyword ? escapeHtml(keyword) : '無'}</b></span>
+          <span>工項數：<b>${taskCount}</b></span>
+          <span>列印時間：${nowStamp()}</span>
+        </div>
+      `;
+
+      const sortTag = {
+        default: '預設順序',
+        startAsc: '開始日由早到晚',
+        startDesc: '開始日由晚到早',
+        endAsc: '完工日由早到晚',
+        endDesc: '完工日由晚到早'
+      }[ganttSortSelect.value] || '';
+      // 存 PDF 時的預設檔名
+      document.title = `台泥桃園3號機_甘特圖_${sortTag}${keyword ? '_' + keyword : ''}_${fileDateStamp()}`;
+    } else {
+      // 規範頁：A4 直式
+      printPageStyle.textContent = '@page { size: A4 portrait; margin: 12mm; }';
+      printHeader.innerHTML = `
+        <div class="ph-title">台泥桃園-#3 拌合系統更新總包工程 — 設備技術規範</div>
+        <div class="ph-meta"><span>列印時間：${nowStamp()}</span></div>
+      `;
+      document.title = `台泥桃園3號機_規範_${currentSelectedId || ''}_${fileDateStamp()}`;
+    }
+  }
+
+  function restoreAfterPrint() {
+    document.title = ORIGINAL_DOC_TITLE;
+  }
+
+  // 使用 Ctrl+P 列印時也會自動套用
+  window.addEventListener('beforeprint', preparePrint);
+  window.addEventListener('afterprint', restoreAfterPrint);
+
+  printGanttBtn.addEventListener('click', () => {
+    if (!startDateInput.value) {
+      alert('請先設定專案開工日再列印');
+      return;
+    }
+    preparePrint();
+    window.print();
+  });
+
+  printSpecBtn.addEventListener('click', () => {
+    preparePrint();
+    window.print();
   });
 
   async function loadTimelineFromSheet() {
@@ -1421,7 +1612,6 @@
     const diffTokens = computeLCSDiff(t1, t2);
 
     let html = '';
-    let currentSpan = null;
 
     diffTokens.forEach(tok => {
       const escaped = escapeHtml(tok.val);
